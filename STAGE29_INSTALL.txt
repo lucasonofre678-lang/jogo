@@ -1,0 +1,10 @@
+LAST COUNTY — STAGE 29 UPDATE ONLY
+
+Pré-requisito: Stage 28 instalada.
+
+1. Abra a pasta principal do jogo.
+2. Extraia o conteúdo do ZIP diretamente nela.
+3. Confirme substituir/mesclar os arquivos existentes.
+4. NÃO extraia criando uma subpasta adicional.
+
+A raiz do ZIP contém diretamente js/, tools/, index.html, style.css e documentação.

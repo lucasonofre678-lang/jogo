@@ -1,0 +1,21 @@
+LAST COUNTY — STAGE 29 VALIDATION
+
+- node --check: all js/*.js OK
+- tools/validate_stage29.js: PASS
+- tools/validate_stage27.js: PASS
+- tools/validate_stage28.js: PASS
+- tools/validate_assets.js: PASS
+- tools/validate_world.js: 4 seeds PASS
+- tools/smoke.js: 3 consecutive runs PASS
+
+Stage 29 validation summary:
+- 65 crafting recipes
+- inventory search/filter/sort active
+- equipment comparison active
+- crafting search/favorites/pinning active
+- batch crafting x1/x5/max active
+- pinned recipe HUD tracker active
+- bidirectional container transfer active
+- non-stackable durability preservation validated
+- Stage 27 arsenal preserved
+- Stage 28 mining preserved

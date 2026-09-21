@@ -1,0 +1,16 @@
+const fs=require('fs'),path=require('path');
+const ROOT=path.resolve(__dirname,'..');
+const html=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
+const ui=fs.readFileSync(path.join(ROOT,'js','inventory_ui.js'),'utf8');
+const css=fs.readFileSync(path.join(ROOT,'inventory-stage29.css'),'utf8');
+const game=fs.readFileSync(path.join(ROOT,'js','game.js'),'utf8');
+const errors=[];
+for(const needle of ['inventory-stage29.css','js/underground.js','js/inventory_ui.js']) if(!html.includes(needle)) errors.push(`index missing ${needle}`);
+if(html.indexOf('js/underground.js')>html.indexOf('js/world_state.js')) errors.push('underground.js must load before world_state.js');
+if(html.indexOf('js/inventory_ui.js')<html.indexOf('js/game.js')) errors.push('inventory_ui.js must load after game.js');
+for(const id of ['handsClothingText','legsClothingText','packClothingText']) if(!html.includes(`id="${id}"`)) errors.push(`Stage 30 slot missing: ${id}`);
+for(const slot of ['head','body','hands','legs','feet','pack']) if(!ui.includes(`'${slot}'`)) errors.push(`UI merge missing slot ${slot}`);
+for(const needle of ['inventory.capacity()','carryBonus','noiseModifier','miningEfficiency']) if(!ui.includes(needle)) errors.push(`UI merge missing Stage 30 concept ${needle}`);
+for(const needle of ['clothingRepair','carryBonus','gearSet','miningEfficiency','medicalBonus','repairBonus']) if(!game.includes(needle)) errors.push(`game.js regressed Stage 30: ${needle}`);
+if(!css.includes('Stage 30 compatibility')) errors.push('CSS Stage 30 compatibility block missing');
+if(errors.length){console.error(errors.join('\n'));process.exit(1);}console.log('Stage 30 + Claude UI merge OK: 6 clothing slots, real pack capacity, Stage 30 stats, underground runtime load.');

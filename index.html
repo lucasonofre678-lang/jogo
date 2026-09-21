@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LAST COUNTY — Survival</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="inventory-stage29.css">
+  <link rel="stylesheet" href="menu-creative.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <img class="brand-logo" src="assets/ui/logo.png" alt="">
+        <div>
+          <strong>LAST COUNTY</strong>
+          <span>SURVIVAL</span>
+        </div>
+      </div>
+
+      <div class="place">
+        <img src="assets/ui/nav_compass.png" alt="">
+        <div>
+          <strong id="navAreaText">Mata Fria</strong>
+          <small><span id="weatherText">LIMPO</span> · <span id="ambientText">16°C</span></small>
+        </div>
+      </div>
+
+      <div class="clock">
+        <img src="assets/ui/nav_clock.png" alt="">
+        <strong id="timeText">08:00</strong>
+        <span>DIA <b id="dayText">1</b></span>
+      </div>
+
+      <nav class="actions">
+        <button id="inventoryButton" class="act" type="button" title="Mochila [Tab]"><img src="assets/ui/nav_inventory.png" alt=""><kbd>TAB</kbd></button>
+        <button id="buildButton" class="act" type="button" title="Construção [B]"><img src="assets/ui/nav_build.png" alt=""><kbd>B</kbd></button>
+        <button id="mapButton" class="act" type="button" title="Mapa [M]"><img src="assets/ui/nav_compass.png" alt=""><kbd>M</kbd></button>
+        <button id="peopleButton" class="act" type="button" title="Pessoas [N]"><img src="assets/ui/nav_people.png" alt=""><kbd>N</kbd><b id="knownPeopleText">0</b></button>
+        <button id="vehicleButton" class="act" type="button" title="Veículo [G]"><img src="assets/ui/nav_vehicle.png" alt=""><kbd>G</kbd><b id="vehicleNavText">—</b></button>
+        <button id="archiveButton" class="act" type="button" title="Arquivo [L]"><img src="assets/ui/nav_archive.png" alt=""><kbd>L</kbd><b id="archiveCountText">0/7</b></button>
+      </nav>
+    </header>
+
+    <section class="game-wrap">
+      <canvas id="game" width="1280" height="720" aria-label="LAST COUNTY"></canvas>
+      <div id="toast" class="toast hidden" aria-live="polite"></div>
+
+      <details class="controls-drawer">
+        <summary title="Controles">?</summary>
+        <div class="help control-sheet">
+
+        <span><kbd>A</kbd><kbd>D</kbd> mover</span>
+        <span><kbd>SHIFT</kbd> correr</span>
+        <span><kbd>ESPAÇO</kbd> pular</span>
+        <span><kbd>CLIQUE</kbd> atacar / atirar</span>
+        <span><kbd>DIREITO</kbd> golpe forte / mirar</span>
+        <span><kbd>J</kbd><kbd>K</kbd> ataques alternativos</span>
+        <span><kbd>R</kbd> recarregar</span>
+        <span><kbd>M</kbd> mapa</span>
+        <span><kbd>F6</kbd> salvar</span>
+        <span><kbd>F9</kbd> carregar</span>
+        <span><kbd>F10</kbd> mudo</span>
+        <span><kbd>B</kbd> construir</span>
+        <span><kbd>F</kbd> reparar</span>
+        <span><kbd>X</kbd> desmontar</span>
+        <span><kbd>CTRL</kbd> agachar</span>
+        <span><kbd>W</kbd><kbd>S</kbd> escadas</span>
+        <span><kbd>V</kbd> lanterna</span>
+        <span><kbd>1-9</kbd> hotbar</span>
+        <span><kbd>CLIQUE</kbd> minerar com ferramenta</span>
+        <span><kbd>DIREITO</kbd> colocar bloco</span>
+        <span><kbd>E</kbd> interagir</span>
+        <span><kbd>N</kbd> pessoas</span>
+        <span><kbd>G</kbd> veículo</span>
+        <span><kbd>H</kbd> buzina</span>
+        <span><kbd>R</kbd> motor</span>
+        <span><kbd>Q</kbd> rádio</span>
+        <span><kbd>L</kbd> arquivo</span>
+      
+        </div>
+      </details>
+
+      <div id="contextPrompt" class="context-prompt hidden">E — ABRIR</div>
+      <div id="hotbar" class="hotbar" aria-label="Hotbar"></div>
+      <div id="craftTracker" class="craft-tracker hidden" aria-live="polite"></div>
+
+
+
+      <div id="containerModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel container-panel">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow">LOOT · CONTAINER</span>
+              <h2 id="containerTitle">Container</h2>
+              <p id="containerSubtitle">Loot encontrado</p>
+            </div>
+            <button id="closeContainer" class="square-button" type="button">×</button>
+          </div>
+          <div class="container-transfer-layout">
+            <section class="container-side">
+              <div class="transfer-head"><span>CONTAINER</span><strong id="containerItemCount">0 ITENS</strong></div>
+              <div id="containerList" class="loot-grid"></div>
+            </section>
+            <section class="container-side backpack-transfer-side">
+              <div class="transfer-head"><span>SUA MOCHILA</span><strong id="containerBackpackWeight">0 KG</strong></div>
+              <div id="containerBackpackList" class="loot-grid backpack-transfer-grid"></div>
+            </section>
+          </div>
+          <div class="container-actions">
+            <span>Clique para transferir. O mundo mantém o conteúdo até ele ser movido.</span>
+            <div class="container-action-buttons">
+              <button id="storeMaterialsButton" type="button">GUARDAR MATERIAIS</button>
+              <button id="takeAllButton" type="button">PEGAR TUDO</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div id="inventoryModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel rust-inventory">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow">SOBREVIVENTE · INVENTÁRIO</span>
+              <h2>MOCHILA</h2>
+              <p id="weightText">0 / 28 kg</p>
+            </div>
+            <button id="closeInventory" class="square-button" type="button">×</button>
+          </div>
+
+          <div class="inventory-layout">
+            <aside class="survivor-pane">
+              <div class="survivor-card">
+                <div class="survivor-avatar survivor-avatar-v2">
+                  <img src="assets/portraits/player.png" alt="Sobrevivente">
+                  <span class="status-dot"></span>
+                </div>
+                <div>
+                  <span class="eyebrow">SOBREVIVENTE ATUAL</span>
+                  <strong>DESCONHECIDO</strong>
+                  <small>Sem profissão definida</small>
+                </div>
+              </div>
+
+              <div class="loadout-box">
+                <span class="eyebrow">EM MÃOS</span>
+                <strong id="inventoryEquippedText">Mãos</strong>
+                <small id="inventoryConditionText">Sem equipamento</small>
+                <div class="loadout-slots-mini">
+                  <div><span>PRIMÁRIA · 1</span><strong id="loadoutPrimaryText">—</strong></div>
+                  <div><span>SECUNDÁRIA · 2</span><strong id="loadoutSecondaryText">—</strong></div>
+                </div>
+              </div>
+
+              <div class="equipment-box">
+                <div class="equipment-head"><span class="eyebrow">ROUPAS</span><strong>PROTEÇÃO</strong></div>
+                <div class="equipment-slots">
+                  <div><span>CABEÇA</span><strong id="headClothingText">—</strong></div>
+                  <div><span>CORPO</span><strong id="bodyClothingText">—</strong></div>
+                  <div><span>MÃOS</span><strong id="handsClothingText">—</strong></div>
+                  <div><span>PERNAS</span><strong id="legsClothingText">—</strong></div>
+                  <div><span>PÉS</span><strong id="feetClothingText">—</strong></div>
+                  <div><span>MOCHILA</span><strong id="packClothingText">—</strong></div>
+                </div>
+                <small id="clothingStatsText">Isolamento 0 · Chuva 0%</small>
+              </div>
+
+              <div class="health-box">
+                <div class="equipment-head"><span class="eyebrow">CONDIÇÃO</span><strong>FERIMENTOS</strong></div>
+                <div id="injuryList" class="injury-list"></div>
+              </div>
+
+              <div class="mini-stats">
+                <div><span>ABATES</span><strong id="inventoryKillText">0</strong></div>
+                <div><span>MORTES</span><strong id="inventoryDeathText">0</strong></div>
+                <div><span>SEED</span><strong id="seedText">---</strong></div>
+              </div>
+            </aside>
+
+            <section class="backpack-pane">
+              <div class="backpack-head">
+                <div>
+                  <span class="eyebrow">ARMAZENAMENTO PESSOAL</span>
+                  <strong>MOCHILA DE CAMPO</strong>
+                </div>
+                <span id="slotCountText">0 itens</span>
+              </div>
+              <div class="capacity"><i id="weightFill"></i></div>
+
+              <div class="inventory-toolbar">
+                <div id="inventoryFilters" class="inventory-filters">
+                  <button class="active" data-inv-filter="all" title="Tudo"><img src="assets/ui/filter_all.png" alt=""><span>TUDO</span></button>
+                  <button data-inv-filter="weapons" title="Armas"><img src="assets/ui/filter_tools.png" alt=""><span>ARMAS</span></button>
+                  <button data-inv-filter="tools" title="Ferramentas"><img src="assets/ui/filter_tools.png" alt=""><span>FERR.</span></button>
+                  <button data-inv-filter="survival" title="Sobrevivência"><img src="assets/ui/filter_survival.png" alt=""><span>SURV.</span></button>
+                  <button data-inv-filter="materials" title="Materiais"><img src="assets/ui/filter_materials.png" alt=""><span>MAT.</span></button>
+                  <button data-inv-filter="components" title="Componentes"><img src="assets/ui/filter_materials.png" alt=""><span>COMP.</span></button>
+                  <button data-inv-filter="clothing" title="Roupas"><img src="assets/ui/filter_clothing.png" alt=""><span>ROUPA</span></button>
+                  <button data-inv-filter="key" title="Chaves"><img src="assets/ui/filter_key.png" alt=""><span>CHAVE</span></button>
+                </div>
+                <div class="inventory-toolbar-right">
+                  <label class="inventory-sort"><span>ORDENAR</span><select id="inventorySort"><option value="category">TIPO</option><option value="name">NOME</option><option value="weight">PESO</option><option value="condition">CONDIÇÃO</option></select></label>
+                  <label class="inventory-search"><img src="assets/ui/filter_search.png" alt=""><input id="inventorySearch" type="search" placeholder="Buscar item..." autocomplete="off"></label>
+                </div>
+              </div>
+
+              <div class="backpack-workspace">
+                <div id="inventoryList" class="inventory-grid inventory-grid-v2"></div>
+                <aside id="itemDetailPane" class="item-detail-pane">
+                  <div class="detail-empty">
+                    <img src="assets/ui/nav_inventory.png" alt="">
+                    <strong>SELECIONE UM ITEM</strong>
+                    <span>Clique em um slot para ver detalhes.</span>
+                  </div>
+                </aside>
+              </div>
+              <div class="drag-hint">Arraste um item para a hotbar para atribuí-lo diretamente a um slot.</div>
+            </section>
+
+            <aside class="craft-pane">
+              <div class="craft-head">
+                <div>
+                  <span class="eyebrow">FABRICAÇÃO</span>
+                  <strong>CRAFTING</strong>
+                </div>
+                <span id="benchStatus" class="bench-status">SEM BANCADA</span>
+              </div>
+              <div class="craft-tools">
+                <label class="craft-search"><span>BUSCAR</span><input id="craftSearch" type="search" placeholder="Receita ou material..." autocomplete="off"></label>
+                <button id="craftFavoritesButton" type="button" title="Mostrar apenas favoritas">★ FAVORITAS</button>
+              </div>
+              <div id="pinnedRecipe" class="pinned-recipe hidden"></div>
+              <div id="craftFilters" class="craft-filters"></div>
+              <div id="craftList" class="craft-list"></div>
+            </aside>
+          </div>
+
+          <div class="inventory-footer">
+            <span>Clima, roupa, sono e ferimentos agora afetam sua sobrevivência. Curativos controlam sangramento; antisséptico reduz risco.</span>
+            <strong>1–9 seleciona a hotbar</strong>
+          </div>
+        </section>
+      </div>
+
+      <div id="radioModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel radio-panel">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow">RÁDIO · LAST COUNTY</span>
+              <h2>RECEPTOR DE CAMPO</h2>
+              <p>Transmissões aparecem conforme você descobre mais sobre o condado.</p>
+            </div>
+            <button id="closeRadio" class="square-button" type="button">×</button>
+          </div>
+          <div class="radio-layout">
+            <aside class="radio-device">
+              <div class="radio-screen">
+                <span>FREQUÊNCIA</span>
+                <strong id="radioFreqText">91.7</strong>
+                <small id="radioStationText">CANAL DE EMERGÊNCIA</small>
+              </div>
+              <div class="radio-signal"><i id="radioSignalFill"></i></div>
+              <button id="radioPrevButton" type="button">◀ ANTERIOR</button>
+              <button id="radioListenButton" type="button">OUVIR TRANSMISSÃO</button>
+              <button id="radioNextButton" type="button">PRÓXIMA ▶</button>
+            </aside>
+            <section class="radio-transcript">
+              <span class="eyebrow">TRANSCRIÇÃO</span>
+              <div id="radioTranscript" class="radio-text">Selecione uma frequência disponível.</div>
+            </section>
+          </div>
+        </section>
+      </div>
+
+      <div id="archiveModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel archive-panel">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow">BLACKRIDGE · INVESTIGAÇÃO</span>
+              <h2>ARQUIVO DO CONDADO</h2>
+              <p id="archiveSubtitle">Registros encontrados: 0 / 7</p>
+            </div>
+            <button id="closeArchive" class="square-button" type="button">×</button>
+          </div>
+
+          <div class="archive-layout">
+            <aside>
+              <span class="eyebrow">DOCUMENTOS</span>
+              <div id="archiveDocList" class="archive-doc-list"></div>
+            </aside>
+            <section>
+              <div id="archiveReader" class="archive-reader">
+                <span class="eyebrow">REGISTRO</span>
+                <h3>Nenhum documento selecionado</h3>
+                <p>Explore Last County para encontrar registros.</p>
+              </div>
+
+              <div id="blackridgeStatus" class="blackridge-status">
+                <div><span>ACESSO BLACKRIDGE</span><strong id="blackridgeAccessText">BLOQUEADO</strong></div>
+                <div><span>EXPOSIÇÃO</span><strong id="archiveExposureText">0%</strong></div>
+                <div><span>VERDADE</span><strong id="truthStatusText">INCOMPLETA</strong></div>
+                <div class="blackridge-operation"><span>OPERAÇÃO</span><strong id="blackridgeCampaignText">INVESTIGAR BLACKRIDGE</strong><small id="blackridgeCampaignHint">Reúna pistas e equipamento.</small></div>
+              </div>
+
+              <div id="archiveChoiceBox" class="archive-choice hidden">
+                <span class="eyebrow">ARQUIVO CENTRAL</span>
+                <h3>O que fazer com os dados?</h3>
+                <p>Esta decisão não encerra o mundo. Ela define apenas o destino dos registros de Blackridge.</p>
+                <div>
+                  <button id="transmitArchiveButton" type="button">TRANSMITIR A VERDADE</button>
+                  <button id="sealArchiveButton" type="button">SELAR O ARQUIVO</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+
+      <div id="vehicleModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel vehicle-panel">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow">MECÂNICA · TRANSPORTE</span>
+              <h2 id="vehicleTitle">VEÍCULO</h2>
+              <p id="vehicleSubtitle">Estado mecânico e armazenamento.</p>
+            </div>
+            <button id="closeVehicle" class="square-button" type="button">×</button>
+          </div>
+          <div class="vehicle-layout">
+            <aside class="vehicle-profile">
+              <div id="vehiclePreview" class="vehicle-preview">CAR</div>
+              <div class="vehicle-stat"><span>COMBUSTÍVEL</span><strong id="vehicleFuelText">0 / 0 L</strong></div>
+              <div class="vehicle-meter"><i id="vehicleFuelFill"></i></div>
+              <div class="vehicle-stat"><span>BATERIA</span><strong id="vehicleBatteryText">0%</strong></div>
+              <div class="vehicle-meter"><i id="vehicleBatteryFill"></i></div>
+              <div class="vehicle-stat"><span>CONDIÇÃO</span><strong id="vehicleConditionText">0%</strong></div>
+              <div class="vehicle-meter"><i id="vehicleConditionFill"></i></div>
+              <button id="vehicleEngineButton" type="button">LIGAR MOTOR</button>
+              <button id="vehicleRefuelButton" type="button">ABASTECER +22 L</button>
+              <button id="vehicleBatteryButton" type="button">TROCAR BATERIA</button>
+              <button id="vehicleRepairButton" type="button">REPARO RÁPIDO</button>
+              <button id="vehicleDrainButton" type="button">DRENAR COMBUSTÍVEL</button>
+              <div class="vehicle-restoration">
+                <span class="trade-label">RESTAURAÇÃO MODULAR</span>
+                <div id="vehicleComponentList" class="vehicle-component-list"></div>
+              </div>
+            </aside>
+            <section>
+              <div class="section-head"><div><span class="eyebrow">ARMAZENAMENTO</span><strong>PORTA-MALAS</strong></div><span id="trunkWeightText">0 / 0 kg</span></div>
+              <div class="vehicle-cargo-columns">
+                <div><span class="trade-label">NO VEÍCULO</span><div id="trunkList" class="trade-list vehicle-cargo-list"></div></div>
+                <div><span class="trade-label">SUA MOCHILA</span><div id="trunkInventoryList" class="trade-list vehicle-cargo-list"></div></div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+
+      <div id="vehicleAssemblyModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel assembly-panel">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow">GARAGEM · PROJETO MODULAR</span>
+              <h2>MONTAGEM DE VEÍCULO</h2>
+              <p>Instale os módulos abstratos do projeto até ele ficar dirigível.</p>
+            </div>
+            <button id="closeVehicleAssembly" class="square-button" type="button">×</button>
+          </div>
+
+          <div class="assembly-layout">
+            <aside class="assembly-preview">
+              <div class="assembly-car-visual">
+                <div class="assembly-frame-line"></div>
+                <span class="wheel a"></span><span class="wheel b"></span>
+                <span id="assemblyBodyVisual" class="body"></span>
+              </div>
+              <span class="eyebrow">PROGRESSO</span>
+              <strong id="assemblyProgressText">0 / 8 módulos</strong>
+              <div class="assembly-progress"><i id="assemblyProgressFill"></i></div>
+              <small id="assemblyBenchStatus">Bancada automotiva necessária.</small>
+              <button id="completeVehicleButton" type="button" disabled>CONCLUIR VEÍCULO</button>
+            </aside>
+
+            <section>
+              <div class="section-head">
+                <div><span class="eyebrow">COMPONENTES</span><strong>PROJETO LC-01</strong></div>
+                <span id="assemblyStatusPill" class="quest-status">EM MONTAGEM</span>
+              </div>
+              <div id="vehicleModuleGrid" class="vehicle-module-grid"></div>
+            </section>
+          </div>
+        </section>
+      </div>
+
+      <div id="buildModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel build-panel">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow">CONSTRUÇÃO · BASE</span>
+              <h2>PROJETOS</h2>
+              <p>Escolha uma estrutura e posicione no mundo com clique esquerdo.</p>
+            </div>
+            <button id="closeBuild" class="square-button" type="button">×</button>
+          </div>
+          <div id="buildFilters" class="build-filters"></div>
+          <div id="buildGrid" class="build-grid"></div>
+          <div class="build-footer">
+            <span><b>F</b> repara com Martelo de reparo · <b>X</b> desmonta com Pé de cabra</span>
+            <strong id="buildModeStatus">Nenhum projeto selecionado</strong>
+          </div>
+        </section>
+      </div>
+
+      <div id="npcModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel npc-panel">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow" id="npcFactionText">SOBREVIVENTE</span>
+              <h2 id="npcNameText">NOME</h2>
+              <p><span id="npcProfessionText">Profissão</span> · <span id="npcRelationLabel">NEUTRO</span></p>
+            </div>
+            <button id="closeNpc" class="square-button" type="button">×</button>
+          </div>
+
+          <div class="npc-grid">
+            <aside class="npc-profile">
+              <div id="npcPortrait" class="npc-portrait"><img id="npcPortraitImage" src="assets/portraits/mara.png" alt=""></div>
+              <span class="eyebrow">PERSONALIDADE</span>
+              <p id="npcPersonalityText"></p>
+
+              <div class="relation-box">
+                <div><span>CONFIANÇA</span><strong id="npcRelationText">0</strong></div>
+                <div class="relation-meter"><i id="npcRelationFill"></i></div>
+              </div>
+
+              <button id="recruitButton" class="recruit-button hidden" type="button">RECRUTAR</button>
+              <button id="dismissButton" class="dismiss-button hidden" type="button">DISPENSAR</button>
+            </aside>
+
+            <div class="npc-main">
+              <section class="dialogue-card">
+                <span class="eyebrow">CONVERSA</span>
+                <p id="npcDialogueText"></p>
+              </section>
+
+              <section class="quest-card">
+                <div class="section-head">
+                  <div><span class="eyebrow">TRABALHO</span><strong id="npcQuestTitle">—</strong></div>
+                  <span id="npcQuestStatus" class="quest-status">DISPONÍVEL</span>
+                </div>
+                <p id="npcQuestDesc"></p>
+                <div id="npcQuestProgress" class="quest-progress"></div>
+                <button id="questActionButton" type="button">ACEITAR TRABALHO</button>
+              </section>
+
+              <section class="trade-card">
+                <div class="section-head">
+                  <div><span class="eyebrow">TROCAS</span><strong>COMÉRCIO</strong></div>
+                  <span class="scrip-pill">FICHAS <b id="npcScripText">0</b></span>
+                </div>
+                <div class="trade-columns">
+                  <div>
+                    <span class="trade-label">À VENDA</span>
+                    <div id="npcTradeStock" class="trade-list"></div>
+                  </div>
+                  <div>
+                    <span class="trade-label">SEUS ITENS</span>
+                    <div id="npcSellList" class="trade-list"></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div id="peopleModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel people-panel">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow">LAST COUNTY · SOCIEDADE</span>
+              <h2>PESSOAS & GRUPOS</h2>
+              <p>Sobreviventes conhecidos, confiança e reputação.</p>
+            </div>
+            <button id="closePeople" class="square-button" type="button">×</button>
+          </div>
+
+          <div class="people-layout">
+            <div>
+              <span class="eyebrow">CONHECIDOS</span>
+              <div id="peopleList" class="people-list"></div>
+            </div>
+            <aside>
+              <span class="eyebrow">REPUTAÇÃO</span>
+              <div id="factionList" class="faction-list"></div>
+              <div class="companion-card">
+                <span class="eyebrow">COMPANHEIRO</span>
+                <strong id="companionText">Nenhum</strong>
+                <div class="companion-orders">
+                  <button id="companionFollowButton" type="button">SEGUIR</button>
+                  <button id="companionHoldButton" type="button">ESPERAR</button>
+                  <button id="companionAvoidButton" type="button">EVITAR COMBATE</button>
+                  <button id="companionBaseButton" type="button">BASE</button>
+                </div>
+              </div>
+              <div class="base-card">
+                <span class="eyebrow">BASE</span>
+                <strong id="baseLevelText">SEM BASE</strong>
+                <small id="baseResidentText">0 residentes</small>
+                <div id="baseStations" class="base-stations"></div>
+              </div>
+              <div class="base-card">
+                <span class="eyebrow">ESTOQUE DA BASE</span>
+                <div id="baseStockList" class="base-stock-list"><small>Vazio</small></div>
+                <button id="claimBaseStockButton" type="button">RETIRAR SUPRIMENTOS</button>
+              </div>
+              <div class="base-card settlement-card">
+                <span class="eyebrow">ASSENTAMENTO</span>
+                <strong id="settlementMoraleText">MORAL 55%</strong>
+                <small id="settlementEventText">Condado relativamente estável</small>
+                <div id="residentRequestList" class="resident-request-list"><small>Nenhum pedido pessoal.</small></div>
+              </div>
+              <div class="base-card operations-card">
+                <span class="eyebrow">OPERAÇÕES ATIVAS</span>
+                <div id="campaignOperationList" class="campaign-operation-list"><small>Nenhuma operação ouvida.</small></div>
+              </div>
+              <div class="base-card save-card">
+                <span class="eyebrow">PARTIDA</span>
+                <strong id="saveStatusText">AUTOSAVE ATIVO</strong>
+                <div class="save-actions">
+                  <button id="saveGameButton" type="button">SALVAR AGORA</button>
+                  <button id="loadGameButton" type="button">CARREGAR</button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </div>
+
+
+
+      <div id="mapModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel map-panel">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow">LAST COUNTY · CARTOGRAFIA</span>
+              <h2>MAPA DO CONDADO</h2>
+              <p>Somente regiões e locais que você já descobriu são identificados.</p>
+            </div>
+            <button id="closeMap" class="square-button" type="button">×</button>
+          </div>
+          <div class="map-layout">
+            <div class="county-map-wrap">
+              <canvas id="countyMap" width="1080" height="420" aria-label="Mapa de Last County"></canvas>
+              <div class="map-hint">CLIQUE NO MAPA PARA CRIAR/REMOVER UM MARCADOR · M PARA FECHAR</div>
+            </div>
+            <aside class="map-side">
+              <span class="eyebrow">POSIÇÃO</span>
+              <strong id="mapPositionText">—</strong>
+              <small id="mapRegionText">—</small>
+              <div class="map-divider"></div>
+              <span class="eyebrow">PROGRESSÃO</span>
+              <strong id="progressionTierText">T0 · IMPROVISO</strong>
+              <small id="progressionHintText">Explore para encontrar materiais melhores.</small>
+              <div class="map-divider"></div>
+              <span class="eyebrow">DESCOBERTAS</span>
+              <strong id="mapDiscoveryText">0 locais</strong>
+              <small id="mapMarkerText">0 marcadores</small>
+              <small id="mapSignalText">0 sinais de rádio</small>
+              <div class="map-legend">
+                <span><i class="legend-player"></i> VOCÊ</span>
+                <span><i class="legend-place"></i> LOCAL</span>
+                <span><i class="legend-underground"></i> SUBSOLO</span>
+                <span><i class="legend-marker"></i> MARCADOR</span>
+                <span><i class="legend-signal"></i> SINAL DE RÁDIO</span>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </div>
+
+      <div id="deathModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="death-panel">
+          <span class="eyebrow danger-label">SOBREVIVENTE PERDIDO</span>
+          <h2>VOCÊ MORREU</h2>
+          <p id="deathSummary">O condado continua sem você.</p>
+          <div class="death-facts">
+            <div><span>ABATES</span><strong id="deathKillsText">0</strong></div>
+            <div><span>DIA</span><strong id="deathDayText">1</strong></div>
+            <div><span>MOCHILA</span><strong id="deathLootText">deixada no mundo</strong></div>
+          </div>
+          <button id="newSurvivorButton" type="button">CRIAR NOVO SOBREVIVENTE</button>
+          <small>O mapa, construções, containers saqueados e o corpo anterior permanecem.</small>
+        </section>
+      </div>
+      <!-- Modo Livre: barra com o bloco na mão e atalhos, mais a paleta -->
+      <div id="creativeBar" class="creative-bar hidden">
+        <button id="creativeOpen" class="creative-slot" type="button" title="Paleta [P]">
+          <img id="creativeSlotIcon" src="assets/ui/nav_build.png" alt="">
+          <span id="creativeSlotName">NENHUM BLOCO</span>
+        </button>
+        <div id="creativeRecent" class="creative-recent"></div>
+        <div class="creative-toggles">
+          <button id="creativeFly" class="creative-toggle" type="button" title="Voo [Z]">VOO</button>
+          <button id="creativeThreat" class="creative-toggle" type="button" title="Infectados">INFECTADOS</button>
+        </div>
+      </div>
+
+      <div id="creativeModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="creative-panel">
+          <header>
+            <div>
+              <span class="eyebrow">MODO LIVRE</span>
+              <h2>PALETA DE MATERIAIS</h2>
+            </div>
+            <input id="creativeSearch" type="search" placeholder="Buscar bloco ou construção...">
+            <button id="creativeClose" class="square-button" type="button">×</button>
+          </header>
+          <nav id="creativeGroups" class="creative-groups"></nav>
+          <div id="creativeGrid" class="creative-grid"></div>
+          <footer id="creativeCount">—</footer>
+        </section>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Tela inicial: cobre tudo, inclusive a barra de topo, e é o primeiro
+       estado do jogo. O loop roda por trás mas o mundo fica pausado. -->
+  <div id="startScreen" class="start-screen" role="dialog" aria-modal="true" aria-label="Menu principal">
+    <div class="start-backdrop" aria-hidden="true"></div>
+    <div class="start-body">
+      <div class="start-head">
+        <img class="start-logo" src="assets/ui/logo.png" alt="">
+        <div>
+          <h1>LAST COUNTY</h1>
+          <p id="startTagline">O condado continua.</p>
+        </div>
+      </div>
+
+      <div class="start-columns">
+        <nav class="start-actions">
+          <button id="startContinue" class="start-primary" type="button">
+            <strong>CONTINUAR</strong>
+            <small id="startContinueInfo">Nenhuma partida salva</small>
+          </button>
+          <button id="startNewSurvival" class="start-mode" type="button" data-mode="survival">
+            <strong>NOVO JOGO</strong>
+            <small>Sobrevivência: fome, frio, infectados e uma base para erguer.</small>
+          </button>
+          <button id="startNewFree" class="start-mode" type="button" data-mode="free">
+            <strong>MODO CRIATIVO</strong>
+            <small>Criativo: todos os blocos, voo, sem fome e sem perigo.</small>
+          </button>
+          <button id="startResume" class="start-ghost hidden" type="button">VOLTAR AO JOGO</button>
+        </nav>
+
+        <section class="start-slots">
+          <header>
+            <span class="eyebrow">PARTIDAS SALVAS</span>
+            <small>Clique para carregar · × apaga</small>
+          </header>
+          <div id="startSlotList" class="slot-list"></div>
+          <footer id="startSlotHint">O jogo salva sozinho a cada 2 minutos no Autosave.</footer>
+        </section>
+      </div>
+
+      <footer class="start-foot">
+        <span><kbd>ESC</kbd> menu</span>
+        <span><kbd>TAB</kbd> mochila</span>
+        <span><kbd>B</kbd> construir</span>
+        <span><kbd>P</kbd> paleta (modo livre)</span>
+        <span><kbd>Z</kbd> voo (modo livre)</span>
+        <span><kbd>F6</kbd> salvar · <kbd>F9</kbd> carregar</span>
+      </footer>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/weapons.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/building.js"></script>
+  <script src="js/decor_data.js"></script>
+  <script src="js/animation.js"></script>
+  <script src="js/wildlife.js"></script>
+  <script src="js/assets.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/survival.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/food.js"></script>
+  <script src="js/farming.js"></script>
+  <script src="js/injuries.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/mining.js"></script>
+  <script src="js/terrain.js"></script>
+  <script src="js/structures.js"></script>
+  <script src="js/underground.js"></script>
+  <script src="js/world_state.js"></script>
+  <script src="js/places.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/enemies.js"></script>
+  <script src="js/progression.js"></script>
+  <script src="js/crafting.js"></script>
+  <script src="js/society.js"></script>
+  <script src="js/vehicles.js"></script>
+  <script src="js/vehicle_crafting.js"></script>
+  <script src="js/power.js"></script>
+  <script src="js/lore.js"></script>
+  <script src="js/objectives.js"></script>
+  <script src="js/hordes.js"></script>
+  <script src="js/events.js"></script>
+  <script src="js/savegame.js"></script>
+  <script src="js/gamemode.js"></script>
+  <script src="js/creative.js"></script>
+  <script src="js/basecamp.js"></script>
+  <script src="js/campaign.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/hud.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/inventory_ui.js"></script>
+  <script src="js/stage31_overhaul.js"></script>
+  <script src="js/stage32_menu.js"></script>
+</body>
+</html>

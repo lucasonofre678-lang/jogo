@@ -1,0 +1,26 @@
+LAST COUNTY — STAGE 20.1 FINAL VALIDATION
+
+node --check: 45 JS files OK
+tools/validate_assets.js: 630 runtime image paths OK
+  - 82 tile atlas entries x 3 variants
+  - 90 item icons
+  - 46 build icons
+  - 196 decor assets
+
+tools/validate_world.js 12: OK
+  - 12 procedural seeds
+  - no unreachable Deep Mine
+  - no inaccessible restored mine containers/panels
+  - no invalid tiles/assets reported
+
+tools/smoke.js: 5 consecutive PASS runs
+
+Representative smoke world:
+960x168
+35 structures
+147 containers
+1184 props
+147 infected
+204 light sources
+109 ambient emitters
+16 event types

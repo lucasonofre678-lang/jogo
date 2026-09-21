@@ -1,0 +1,9 @@
+LAST COUNTY — STAGE 28 MINING & RESOURCE PROGRESSION OVERHAUL
+
+INSTALAÇÃO:
+1. Abra a pasta principal do LAST COUNTY (a mesma pasta que contém index.html e js/).
+2. Extraia TODO o conteúdo deste ZIP diretamente nela.
+3. Quando o sistema perguntar, substitua/mescle os arquivos existentes.
+4. Não extraia este ZIP dentro de uma nova pasta "jogo".
+
+Este é um UPDATE ONLY: contém apenas arquivos novos ou modificados em relação à Stage 27 estrutural.
