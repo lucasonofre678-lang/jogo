@@ -1,8 +1,0 @@
-LAST COUNTY — STAGE 30 UPDATE ONLY
-
-1. Abra a pasta principal do jogo.
-2. Extraia o conteúdo deste ZIP diretamente nela.
-3. Confirme substituir/mesclar arquivos existentes.
-4. NÃO crie uma pasta Stage30 dentro da pasta do jogo.
-
-Se o Claude estiver modificando os mesmos arquivos de UI neste momento, envie a versão dele para merge antes de aplicar este overlay, para não perder alterações visuais.

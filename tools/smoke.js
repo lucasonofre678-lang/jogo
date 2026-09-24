@@ -127,12 +127,12 @@ sandbox.window.document = document_;
 const context = vm.createContext(sandbox);
 
 const FILES = [
-  'config.js', 'weapons.js', 'audio.js', 'building.js', 'decor_data.js', 'animation.js', 'wildlife.js',
+  'config.js', 'weapons.js', 'audio.js', 'building.js', 'stage39_content.js', 'stage40_content.js', 'decor_data.js', 'animation.js', 'wildlife.js',
   'assets.js', 'inventory.js', 'survival.js', 'weather.js', 'food.js', 'farming.js', 'injuries.js',
   'world.js', 'mining.js', 'terrain.js', 'structures.js', 'underground.js', 'world_state.js', 'places.js',
-  'player.js', 'enemies.js', 'progression.js', 'crafting.js', 'society.js', 'vehicles.js',
+  'player.js', 'enemies.js', 'stage41_expeditions.js', 'stage41_1_polish.js', 'progression.js', 'crafting.js', 'society.js', 'vehicles.js',
   'vehicle_crafting.js', 'power.js', 'lore.js', 'objectives.js', 'hordes.js',
-  'events.js', 'savegame.js', 'gamemode.js', 'creative.js', 'basecamp.js', 'campaign.js', 'fx.js', 'hud.js', 'game.js',
+  'events.js', 'savegame.js', 'gamemode.js', 'creative.js', 'basecamp.js', 'stage39_survival.js', 'stage40_greenwater.js', 'campaign.js', 'fx.js', 'hud.js', 'game.js',
   'inventory_ui.js', 'stage31_overhaul.js', 'stage32_menu.js'
 ];
 
@@ -179,12 +179,12 @@ function frames(n, step = 16) {
 // top-level const/let live in the context's lexical scope, not on globalThis,
 // so expose the handles the test drives through one bridging script
 vm.runInContext(`globalThis.__game = {
-  CONFIG, TILE, TILE_INFO, ITEM_DEFS, BUILD_DEFS, CRAFT_RECIPES, LORE_DOCUMENTS, PLAYER_ANIMATIONS, INFECTED_ANIMATIONS,
+  CONFIG, TILE, TILE_INFO, REGIONS, ITEM_DEFS, BUILD_DEFS, CROP_DEFS, CRAFT_RECIPES, LORE_DOCUMENTS, PLAYER_ANIMATIONS, INFECTED_ANIMATIONS,
   world, structures, player, inventory, mining, survival, danger, building, progression, crafting, power,
   lore, weather, injuries, society, vehicles, vehicleCraft, fx, terrain, lighting, hud,
   mouse, camera, hotbar, input, VEHICLE_MODULES, hordes, audio, places, objectives, events, worldState, baseCamp, campaign,
   STAGE31_EVENT_TYPES, STAGE31_SKILLS, useSkills, residentLife, livingWorld, Stage31UI, exportGameState,
-  GAME_MODES, SaveSlots, creative,
+  GAME_MODES, SaveSlots, SaveGameSystem, creative, sustainable, greenwater, opening, OpeningSequence,
   meleeAttack, fireWeapon, reloadWeapon, weaponProfile, magazines, primaryMouseAction, secondaryMouseAction, updateMouseTile, toggleMap, saveGameState, loadGameState,
   get selected() { return selected; }, set selected(v) { selected = v; },
   mineAtMouse, placeAtMouse, renderCrafting, renderBuildGrid, renderInventory, renderHotbar,
@@ -205,6 +205,18 @@ console.log(`world ${g.CONFIG.WORLD_W}x${g.CONFIG.WORLD_H}, ${g.structures.struc
 
 frames(30);
 
+// Stage 41.1 — authored spawn and opening sequence.
+{
+  const camp=g.structures.structures.find(s=>s.name==='Ponto de Evacuação 12');
+  if(!camp||!camp.stage411)errors.push('Stage 41.1 não transformou o spawn em ponto de evacuação');
+  if(Math.abs(Math.floor(g.player.x/g.CONFIG.TILE)-33)>1)errors.push(`Stage 41.1 ainda nasce fora do acampamento inicial (${Math.floor(g.player.x/g.CONFIG.TILE)})`);
+  const seq=new g.OpeningSequence({fresh:true,mode:'survival'});seq.start();seq.update(6.2);
+  if(!seq.active||seq.phase!==3)errors.push('Stage 41.1 introdução não chegou à fase de controle');
+  seq.handleKey('enter');if(seq.active)errors.push('Stage 41.1 introdução não pode ser concluída');
+  const tx=1780,ty=10;g.world.set(tx,ty,g.TILE.STONE);const fixed=g.structures.cleanUnreachableNaturalLedges();
+  if(!fixed||g.world.get(tx,ty)!==g.TILE.AIR)errors.push('Stage 41.1 não limpou plataforma natural inalcançável');
+}
+
 // Stage 24 movement: slower top speed, real acceleration and explicit animation states.
 {
   key('d'); frames(3);
@@ -219,7 +231,7 @@ frames(30);
   if (!(g.CONFIG.PLAYER_SPRINT_MULT > 1 && g.CONFIG.PLAYER_MAX_SPEED * g.CONFIG.PLAYER_SPRINT_MULT < 6.3)) errors.push('sprint Stage 24 fora do pacing deliberado');
   if (sprint > g.CONFIG.PLAYER_MAX_SPEED * g.CONFIG.PLAYER_SPRINT_MULT + .3) errors.push(`sprint excedeu limite (${sprint.toFixed(2)})`);
   key(' '); frames(18);
-  if (!['jump','fall','land','run'].includes(g.player.animState)) errors.push(`estado aéreo inválido: ${g.player.animState}`);
+  if (!['jump','fall','land','run','hurt'].includes(g.player.animState)) errors.push(`estado aéreo inválido: ${g.player.animState}`);
   frames(12);
   key(' ', 'keyup'); key('shift', 'keyup'); key('d', 'keyup');
   key('a'); frames(30); key('a', 'keyup');
@@ -910,6 +922,69 @@ frames(40);
   const hp=g.survival.health;g.damagePlayer(10,g.player.x);if(g.survival.health<hp)errors.push('Stage 32 modo criativo recebeu dano');
   const snap=g.exportGameState();if(snap.mode!=='free'||!snap.creative)errors.push('Stage 32 payload criativo ausente no save');
   g.currentGameMode='survival';g.creative.enabled=false;
+}
+
+// Stage 39 — alimento sustentável, água automatizada e energia priorizada.
+{
+  const cropIds=['carrot','pumpkin','cabbage','onion','strawberry'];
+  if(cropIds.some(id=>!g.CROP_DEFS[id]))errors.push('Stage 39 culturas novas incompletas');
+  const builds=Object.values(g.BUILD_DEFS).filter(d=>d.stage39);
+  if(builds.length!==15)errors.push(`Stage 39 construções: ${builds.length}/15`);
+  const bx=Math.floor(g.player.x/g.CONFIG.TILE),by=g.world.groundY(bx)-1;
+  const add=(type,x,w=1,h=1,extra={})=>{const o={id:12000+g.building.objects.length,type,tileX:x,tileY:by,width:w,height:h,health:100,maxHealth:100,...extra};g.building.objects.push(o);return o;};
+  const solar=add('solar_array',bx,4,2),battery=add('battery_bank',bx+5,2,1,{charge:3,capacity:18});
+  add('distribution_box',bx+8);const fridge=add('cold_room',bx+10,3,2);const pump=add('electric_pump',bx+13,2,1);add('motion_floodlight',bx+15);
+  const reservoir=add('water_reservoir',bx+17,3,2,{water:20,waterCapacity:80});add('sprinkler',bx+20);
+  g.power.update(1,{daylight:1,rainIntensity:0});
+  if(g.power.report().production<=0||!fridge.powered||!pump.powered)errors.push('Stage 39 rede solar não alimentou consumidores essenciais');
+  const oldPriority=fridge.powerPriority;g.power.cyclePriority(fridge);if(fridge.powerPriority===oldPriority)errors.push('Stage 39 prioridade elétrica não alternou');
+  g.sustainable.lastMinutes=g.worldMinutes-120;g.sustainable.update(1);
+  if(!Number.isFinite(reservoir.water)||!g.sustainable.report().rooms.length)errors.push('Stage 39 abastecimento/relatório indisponível');
+  const snap=g.exportGameState();if(!snap.sustainable)errors.push('Stage 39 payload sustentável ausente no save');
+  const catalog=g.creative.build();
+  if(!catalog.some(e=>e.id==='solar_array'&&e.kind==='build')||!catalog.some(e=>e.id==='seed_carrot'&&e.kind==='item'))errors.push('Stage 39 não entrou no catálogo criativo');
+  if(!(solar.output>0&&battery.capacity>=18))errors.push('Stage 39 fontes/baterias não foram preparadas');
+}
+
+// Stage 40 — expansão horizontal, Vale Verde e migração real do grid antigo.
+{
+  if(g.CONFIG.WORLD_W!==1900||g.CONFIG.WORLD_H!==184)errors.push(`Stage 40 tamanho incorreto: ${g.CONFIG.WORLD_W}x${g.CONFIG.WORLD_H}`);
+  const greenRegions=g.REGIONS.filter(r=>r.stage40);
+  if(greenRegions.length!==5)errors.push(`Stage 40 sub-regiões: ${greenRegions.length}/5`);
+  const names=['Passagem Greenwater','Estação Florestal Greenwater','Viveiro Greenwater','Serraria Greenwater','Fazenda Greenwater'];
+  for(const name of names)if(!g.structures.structures.some(s=>s.name===name))errors.push(`Stage 40 local ausente: ${name}`);
+  const itemIds=['blueberry','edible_mushroom','mint','plant_fiber','tree_resin','fertile_soil','clay','muddy_water','wet_wood','treated_wood','honey'];
+  if(itemIds.some(id=>!g.ITEM_DEFS[id]))errors.push('Stage 40 recursos incompletos');
+  if(Object.values(g.BUILD_DEFS).filter(d=>d.stage40).length!==8)errors.push('Stage 40 construções incompletas');
+  for(const d of Object.values(g.BUILD_DEFS).filter(d=>d.stage40))for(const id of Object.keys(d.cost||{}))if(!g.ITEM_DEFS[id])errors.push(`Stage 40 custo inexistente em ${d.name}: ${id}`);
+  if(!g.structures.containers.some(c=>c.x/g.CONFIG.TILE>=960&&(c.loot||[]).some(v=>itemIds.includes(v.id))))errors.push('Stage 40 loot regional ausente');
+  const px=Math.floor(g.player.x/g.CONFIG.TILE),py=g.world.groundY(px)-1;
+  const mill={id:15001,type:'watermill',tileX:px+2,tileY:py,width:4,height:3,health:100,maxHealth:100};
+  const node={id:15002,type:'distribution_box',tileX:px+7,tileY:py,width:1,height:1,health:100,maxHealth:100};
+  g.building.objects.push(mill,node);g.power.update(1,{daylight:0,rainIntensity:1});
+  if(g.power.report().production<2.3)errors.push('Stage 40 moinho não produz energia');
+  const snapshot=g.exportGameState();
+  if(snapshot.version!==41||snapshot.world.width!==1900||!snapshot.greenwater)errors.push('Stage 41 payload de save incompleto');
+  const legacy40={...snapshot,version:40,containers:snapshot.containers.filter(c=>!c.stage41)};
+  if(!g.loadGameState(legacy40,true))errors.push('Stage 41 recusou save v40');
+  else {
+    const gained=g.structures.containers.filter(c=>c.stage41);
+    if(gained.length!==10)errors.push(`Stage 41 migrou ${gained.length}/10 containers de expedição`);
+    if(g.world.get(1088,102)!==g.TILE.AIR)errors.push('Stage 41 não restaurou a geometria das expedições em save v40');
+  }
+  const oldWide={...snapshot,containers:snapshot.containers.filter(c=>c.name!=='Baú do Mirante Greenwater')};
+  if(!g.loadGameState(oldWide,true)||!g.structures.containers.some(c=>c.name==='Baú do Mirante Greenwater'))errors.push('Stage 40.2 não acrescentou conteúdo novo ao save 1900 existente');
+  // Emula um save v39 sem metadados de dimensão: uma célula antiga precisa
+  // cair na mesma coordenada, e os containers da expansão devem continuar.
+  const oldW=960,oldH=168,oldTiles=new Uint8Array(oldW*oldH),oldWalls=new Uint8Array(oldW*oldH);
+  oldTiles[10*oldW+10]=g.TILE.STONE;oldWalls[10*oldW+10]=g.TILE.DIRT;
+  const legacy={...snapshot,version:39,greenwater:undefined,world:{tiles:g.SaveGameSystem.encodeBytes(oldTiles),walls:g.SaveGameSystem.encodeBytes(oldWalls),damage:[]},containers:snapshot.containers.filter(c=>c.x/g.CONFIG.TILE<oldW)};
+  if(!g.loadGameState(legacy,true))errors.push('Stage 40 recusou save v39');
+  else {if(g.world.get(10,10)!==g.TILE.STONE)errors.push('Stage 40 não migrou coordenadas do terreno antigo');if(!g.structures.containers.some(c=>c.x/g.CONFIG.TILE>=960))errors.push('Stage 40 perdeu containers novos ao migrar');}
+  const meadow=[];for(let x=1715;x<=1838;x++)meadow.push(g.world.groundY(x));
+  if(Math.max(...meadow)-Math.min(...meadow)>1)errors.push('Stage 40 planície de construção não ficou plana');
+  const fx=1750,fy=20;g.world.set(fx,fy,g.TILE.WOOD);g.world.set(fx,fy-1,g.TILE.LEAF);g.world.cleanFloatingVegetation(1748,1752);
+  if(g.world.get(fx,fy)!==g.TILE.AIR||g.world.get(fx,fy-1)!==g.TILE.AIR)errors.push('Stage 40 não removeu árvore flutuante');
 }
 
 console.log(`chunks built: ${g.terrain.built}, kills: ${g.danger.kills}, ` +

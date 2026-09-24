@@ -1,9 +1,0 @@
-LAST COUNTY — STAGE 30 + CLAUDE INVENTORY UI MERGE
-
-1. Extraia o CONTEÚDO deste ZIP dentro da pasta principal do jogo.
-2. Aceite substituir os arquivos existentes.
-3. Faça Ctrl+F5 no navegador.
-4. Abra a mochila com TAB.
-
-Este é um UPDATE ONLY. Não há pasta jogo/ extra na raiz.
-Foi preparado especificamente em cima do jogo(3).zip enviado em 20/09/2026.

@@ -1,0 +1,11 @@
+.opening-sequence{position:fixed;inset:0;z-index:9800;display:grid;place-items:center;background:radial-gradient(circle at 50% 55%,rgba(24,31,29,.28),rgba(5,8,8,.94) 72%),linear-gradient(180deg,rgba(8,12,12,.35),rgba(5,7,7,.9));color:#ddd9c7;cursor:pointer;transition:opacity .65s ease;overflow:hidden}
+.opening-sequence::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.08) 4px);opacity:.55;pointer-events:none}
+.opening-sequence.leaving{opacity:0;pointer-events:none}
+.opening-card{position:relative;width:min(760px,calc(100vw - 44px));padding:42px 46px;border-left:3px solid #a89c61;background:linear-gradient(90deg,rgba(12,17,16,.93),rgba(15,20,19,.72) 74%,transparent);box-shadow:-28px 0 80px rgba(0,0,0,.42)}
+.opening-kicker{display:block;margin-bottom:13px;color:#aaa16a;font:700 11px/1.4 monospace;letter-spacing:.2em;text-transform:uppercase}
+.opening-card h2{margin:0 0 15px;color:#e4e1cf;font:800 clamp(28px,5vw,56px)/1.02 Georgia,serif;letter-spacing:.035em;text-shadow:0 3px 18px #000}
+.opening-card p{max-width:630px;margin:0;color:#bbbba9;font:500 15px/1.65 system-ui,sans-serif}
+.opening-hint{display:block;margin-top:30px;color:#777d70;font:700 10px/1.4 monospace;letter-spacing:.13em;animation:openingPulse 1.8s ease-in-out infinite}
+.opening-sequence[data-phase="2"] .opening-card{border-left-color:#a46d4e}.opening-sequence[data-phase="2"] .opening-kicker{color:#c1805a}
+@keyframes openingPulse{50%{opacity:.42}}
+@media(max-width:620px){.opening-card{padding:30px 25px}.opening-card p{font-size:13px}}

@@ -55,7 +55,7 @@ class Player {
   }
 
   spawn() {
-    const tx = 24;
+    const tx = 33;
     const sy = this.world.groundY(tx);
     this.x = tx * CONFIG.TILE + 5;
     this.y = sy * CONFIG.TILE - this.h - 2;

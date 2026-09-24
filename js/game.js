@@ -173,7 +173,25 @@ const ui = {
   assemblyBodyVisual: document.getElementById("assemblyBodyVisual"),
   trunkWeightText: document.getElementById("trunkWeightText"),
   trunkList: document.getElementById("trunkList"),
-  trunkInventoryList: document.getElementById("trunkInventoryList")
+  trunkInventoryList: document.getElementById("trunkInventoryList"),
+  sustainabilityButton: document.getElementById("sustainabilityButton"),
+  sustainabilityModal: document.getElementById("sustainabilityModal"),
+  closeSustainability: document.getElementById("closeSustainability"),
+  baseDaysText: document.getElementById("baseDaysText"),
+  stage39FoodDays: document.getElementById("stage39FoodDays"),
+  stage39Water: document.getElementById("stage39Water"),
+  stage39Farm: document.getElementById("stage39Farm"),
+  stage39Comfort: document.getElementById("stage39Comfort"),
+  stage39PowerState: document.getElementById("stage39PowerState"),
+  stage39Production: document.getElementById("stage39Production"),
+  stage39Demand: document.getElementById("stage39Demand"),
+  stage39Battery: document.getElementById("stage39Battery"),
+  stage39ProductionFill: document.getElementById("stage39ProductionFill"),
+  stage39DemandFill: document.getElementById("stage39DemandFill"),
+  stage39BatteryFill: document.getElementById("stage39BatteryFill"),
+  stage39Consumers: document.getElementById("stage39Consumers"),
+  stage39Rooms: document.getElementById("stage39Rooms"),
+  togglePowerOverlay: document.getElementById("togglePowerOverlay")
 };
 
 SaveSlots.migrateLegacy();
@@ -204,6 +222,8 @@ const injuries = new InjurySystem(seed);
 // Lore builds the Blackridge annex and bunker, so it has to run before the
 // infected are placed or nothing would ever spawn down there.
 const lore = new LoreSystem(world, structures, inventory, null, seed);
+world.cleanFloatingVegetation();
+structures.cleanUnreachableNaturalLedges();
 const worldState = new WorldStateSystem(world, structures, seed);
 const danger = new DangerSystem(world, structures, seed);
 lore.danger = danger;
@@ -266,6 +286,17 @@ const baseCamp = new BaseCampSystem({
 });
 society.baseCamp = baseCamp;
 baseCamp.onNotice = (text, tone) => showToast(text, tone);
+const sustainable = new SustainableSurvivalSystem({
+  world, building, structures, inventory, farming, food, power, baseCamp, society, weather,
+  getWorldMinutes: () => worldMinutes
+});
+sustainable.onNotice = (text, tone) => showToast(text, tone);
+const greenwater = new GreenwaterSystem({world,structures,building,inventory,farming,weather,getWorldMinutes:()=>worldMinutes});
+greenwater.onNotice=(text,tone)=>showToast(text,tone);
+const opening=new OpeningSequence({
+  fresh:Boolean(pendingNew),mode:currentGameMode,
+  onFinish:()=>showToast('Vasculhe o Ponto de Evacuação 12 e procure abrigo antes da noite','warn')
+});
 
 const campaign = new CampaignSystem({
   structures, society, baseCamp, worldState, danger, hordes, places, inventory, lore, progression, weather, seed,
@@ -354,6 +385,7 @@ let vehicleOpen = false;
 let radioOpen = false;
 let archiveOpen = false;
 let mapOpen = false;
+let sustainabilityOpen = false;
 const mapMarkers = [];
 let radioIndex = 0;
 let selectedArchiveDoc = null;
@@ -1493,6 +1525,23 @@ function interactBuiltObject() {
       togglePeople(true);
       const label = BUILD_DEFS[object.type]?.name || 'Estação da base';
       showToast(`${label}: equipe da base disponível`, 'good');
+    },
+    onStage39(object) {
+      const result = sustainable.interact(object);
+      if (!result.ok) return;
+      if (result.openPanel) toggleSustainability(true);
+      if (result.message) showToast(result.message, result.tone || '');
+      if (result.inventory) { renderHotbar(); renderInventory(); updateUI(); }
+      if (result.containerId != null) {
+        const box = structures.containers.find(c => c.id === result.containerId);
+        if (box) { activeContainer=box;box.discovered=true;containerOpen=true;ui.containerModal.classList.remove('hidden');renderContainer(); }
+      }
+    },
+    onStage40(object) {
+      const result=greenwater.interact(object);if(!result.ok)return;
+      if(result.openPanel)toggleSustainability(true);
+      if(result.message)showToast(result.message,result.tone||'');
+      if(result.inventory){renderHotbar();renderInventory();updateUI();}
     }
   });
 }
@@ -1835,6 +1884,43 @@ function toggleMap(force) {
     renderCountyMap();
   }
   ui.mapModal.classList.toggle('hidden', !mapOpen);
+}
+
+function renderSustainability() {
+  if (!ui.sustainabilityModal) return;
+  const r = sustainable.report(), p = r.power;
+  ui.stage39FoodDays.textContent = `${r.foodDays.toFixed(1)} dias`;
+  ui.stage39Water.textContent = `${r.water.toFixed(0)} L`;
+  ui.stage39Farm.textContent = `${r.farm.planted}/${r.farm.total} · ${r.farm.ripe} pronto${r.farm.ripe === 1 ? '' : 's'}`;
+  ui.stage39Comfort.textContent = `${r.comfort}%`;
+  ui.stage39PowerState.textContent = !power.nodes().length ? 'SEM REDE' : p.shed ? `${p.shed} SISTEMA${p.shed === 1 ? '' : 'S'} CORTADO${p.shed === 1 ? '' : 'S'}` : p.online ? 'REDE ESTÁVEL' : 'BLACKOUT';
+  ui.stage39Production.textContent = `${p.production.toFixed(1)} kW`;
+  ui.stage39Demand.textContent = `${p.demand.toFixed(1)} kW`;
+  ui.stage39Battery.textContent = `${p.stored.toFixed(1)}/${p.capacity.toFixed(0)} kWh`;
+  const scale = Math.max(1, p.production, p.demand);
+  ui.stage39ProductionFill.style.width = `${Math.min(100,p.production/scale*100)}%`;
+  ui.stage39DemandFill.style.width = `${Math.min(100,p.demand/scale*100)}%`;
+  ui.stage39BatteryFill.style.width = `${p.capacity ? Math.min(100,p.stored/p.capacity*100) : 0}%`;
+  const priorityLabel = ['','ESSENCIAL','IMPORTANTE','NORMAL','DESLIGA PRIMEIRO'];
+  const consumers = power.consumers();
+  ui.stage39Consumers.innerHTML = consumers.length ? consumers.map(o => {
+    const d=power.consumerProfile(o.type);return `<div class="consumer-row ${o.powered?'on':''}"><div><strong>${d.label}</strong><small>${d.demand.toFixed(2)} kW · ${o.powered?'LIGADO':'SEM ENERGIA'}</small></div><span>P${o.powerPriority}</span><button type="button" data-power-priority="${o.id}">${priorityLabel[o.powerPriority]}</button></div>`;
+  }).join('') : '<small>Nenhum aparelho conectado.</small>';
+  ui.stage39Consumers.querySelectorAll('[data-power-priority]').forEach(btn=>btn.addEventListener('click',()=>{const o=building.objects.find(v=>v.id===Number(btn.dataset.powerPriority));power.cyclePriority(o);renderSustainability();}));
+  ui.stage39Rooms.innerHTML = r.rooms.map(room=>`<div class="room-chip ${room.online?'on':''}">${room.label}</div>`).join('');
+  ui.togglePowerOverlay.textContent = sustainable.overlay ? 'OCULTAR REDE' : 'VER REDE';
+}
+
+function toggleSustainability(force) {
+  if (gameDead || !ui.sustainabilityModal) return;
+  const opening = typeof force === 'boolean' ? force : !sustainabilityOpen;
+  if (opening) {
+    sustainabilityOpen = false;
+    closeTopModal();
+    sustainabilityOpen = true;
+    renderSustainability();
+  } else sustainabilityOpen = false;
+  ui.sustainabilityModal.classList.toggle('hidden', !sustainabilityOpen);
 }
 
 function mapClick(e) {
@@ -2562,7 +2648,7 @@ function startNewSurvivor() {
 
 function exportGameState() {
   return {
-    version:32,
+    version:41,
     seed,
     savedAt:Date.now(),
     mode:currentGameMode,
@@ -2581,6 +2667,8 @@ function exportGameState() {
     magazines:[...magazines.entries()],
     mapMarkers:mapMarkers.map(m => ({...m})),
     world:{
+      width:CONFIG.WORLD_W,
+      height:CONFIG.WORLD_H,
       tiles:SaveGameSystem.encodeBytes(world.tiles),
       walls:SaveGameSystem.encodeBytes(world.walls),
       damage:[...world.damage.entries()]
@@ -2600,6 +2688,8 @@ function exportGameState() {
     food:food.exportState(),
     wildlife:wildlife.exportState(),
     farming:{ version:1, lastMinutes:farming.lastMinutes, harvestedTotal:farming.harvestedTotal, lastTrapMinute },
+    sustainable:sustainable.exportState(),
+    greenwater:greenwater.exportState(),
     danger:{ kills:danger.kills }
   };
 }
@@ -2621,11 +2711,22 @@ function loadGameState(data = null, silent = false) {
   }
 
   const size = CONFIG.WORLD_W * CONFIG.WORLD_H;
-  const tiles = SaveGameSystem.decodeBytes(save.world?.tiles, size);
-  const walls = SaveGameSystem.decodeBytes(save.world?.walls, size);
-  if (tiles && tiles.length === size) world.tiles.set(tiles);
-  if (walls && walls.length === size) world.walls.set(walls);
-  world.damage = new Map(save.world?.damage || []);
+  const savedW=Math.max(1,save.world?.width||960),savedH=Math.max(1,save.world?.height||168),savedSize=savedW*savedH;
+  const tiles = SaveGameSystem.decodeBytes(save.world?.tiles, savedSize);
+  const walls = SaveGameSystem.decodeBytes(save.world?.walls, savedSize);
+  const restoreGrid=(source,target)=>{
+    if(!source)return;
+    if(savedW===CONFIG.WORLD_W&&savedH===CONFIG.WORLD_H){target.set(source);return;}
+    const copyW=Math.min(savedW,CONFIG.WORLD_W),copyH=Math.min(savedH,CONFIG.WORLD_H);
+    for(let y=0;y<copyH;y++)target.set(source.subarray(y*savedW,y*savedW+copyW),y*CONFIG.WORLD_W);
+  };
+  restoreGrid(tiles,world.tiles);restoreGrid(walls,world.walls);
+  // Stage 41 authored zones occupy previously unused underground space. Old
+  // saves restore their Stage 40 tile grid, so carve only the new geometry
+  // again without touching the player's inventory, containers or buildings.
+  if((save.version||0)<41) structures.restoreStage41Terrain?.();
+  world.damage = new Map((save.world?.damage||[]).map(([i,v])=>{const y=Math.floor(i/savedW),x=i%savedW;return [y*CONFIG.WORLD_W+x,v];}).filter(([i])=>i>=0&&i<size));
+  world.cleanFloatingVegetation();
   terrain.invalidateAll?.();
 
   worldMinutes = Number.isFinite(save.worldMinutes) ? save.worldMinutes : worldMinutes;
@@ -2654,7 +2755,22 @@ function loadGameState(data = null, silent = false) {
     building.nextId = save.building.nextId || (Math.max(0, ...building.objects.map(o => o.id || 0)) + 1);
   }
   if (Array.isArray(save.containers)) {
+    const generatedContainers=structures.containers.map(c=>({...c,loot:(c.loot||[]).map(v=>({...v}))}));
+    const expansionContainers=savedW<CONFIG.WORLD_W?generatedContainers.filter(c=>Math.floor(c.x/CONFIG.TILE)>=savedW):[];
     structures.containers = save.containers.map(c => ({...c, loot:(c.loot || []).map(v => ({...v}))}));
+    let expansionId=Math.max(0,...structures.containers.map(c=>c.id||0))+1;
+    for(const c of expansionContainers)structures.containers.push({...c,id:expansionId++,loot:(c.loot||[]).map(v=>({...v}))});
+    // Stage 40.2 adds content inside the already-expanded 1900-wide map.
+    // Merge only missing Greenwater containers so old saves gain the new
+    // locations without refilling anything the player has already searched.
+    const existingContainerKeys=new Set(structures.containers.map(c=>`${c.name}|${Math.round(c.x)}|${Math.round(c.y)}`));
+    for(const c of generatedContainers){
+      const tx=Math.floor(c.x/CONFIG.TILE);
+      const key=`${c.name}|${Math.round(c.x)}|${Math.round(c.y)}`;
+      if((tx<1530&&!c.stage41)||existingContainerKeys.has(key))continue;
+      structures.containers.push({...c,id:expansionId++,loot:(c.loot||[]).map(v=>({...v}))});
+      existingContainerKeys.add(key);
+    }
     structures.nextContainerId = Math.max(1, ...structures.containers.map(c => (c.id || 0) + 1));
   }
   const pointById = new Map(structures.points.map(p => [p.id, p]));
@@ -2694,6 +2810,8 @@ function loadGameState(data = null, silent = false) {
     farming.lastMinutes = null;
     lastTrapMinute = 0;
   }
+  sustainable.importState(save.sustainable);
+  greenwater.importState(save.greenwater);
   if (save.danger) danger.kills = save.danger.kills || 0;
   currentGameMode = save.mode === 'free' ? 'free' : 'survival';
   creative.enabled = currentGameMode === 'free';
@@ -2702,7 +2820,7 @@ function loadGameState(data = null, silent = false) {
 
   gameDead = false;
   autosaveTimer = 0;
-  renderHotbar(); renderInventory(); renderBuildGrid(); renderPeoplePanel(); renderArchive(); renderRadio(); updateUI();
+  renderHotbar(); renderInventory(); renderBuildGrid(); renderPeoplePanel(); renderArchive(); renderRadio(); renderSustainability(); updateUI();
   if (!silent) showToast('Partida carregada do Slot 1', 'good');
   return true;
 }
@@ -3041,9 +3159,10 @@ function audioPan(worldX) {
 }
 
 function drawBackground(light) {
-  const top = mixColor([13, 18, 27], [124, 172, 206], light);
-  const mid = mixColor([26, 30, 36], [186, 190, 178], light);
-  const bottom = mixColor([36, 36, 36], [214, 198, 156], light);
+  const green=world.region(Math.floor((player.x+player.w/2)/CONFIG.TILE)).stage40;
+  const top = mixColor([13, 18, 27], green?[105,158,154]:[124,172,206], light);
+  const mid = mixColor([26, 30, 36], green?[151,176,151]:[186,190,178], light);
+  const bottom = mixColor([36, 36, 36], green?[169,176,128]:[214,198,156], light);
   const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
   g.addColorStop(0, `rgb(${top.join(',')})`);
   g.addColorStop(.55, `rgb(${mid.join(',')})`);
@@ -3542,6 +3661,8 @@ function draw(dt) {
   building.draw(ctx, camera.x, camera.y, mouse.tileX, mouse.tileY, player);
   farming.draw(ctx, camera.x, camera.y);
   power.draw(ctx, camera.x, camera.y);
+  sustainable.draw(ctx, camera.x, camera.y);
+  greenwater.draw(ctx,camera.x,camera.y,player,light);
   lore.draw(ctx, camera.x, camera.y);
   vehicles.draw(ctx, camera.x, camera.y);
   danger.draw(ctx, camera.x, camera.y, lighting);
@@ -3617,7 +3738,7 @@ function setText(el, key, value) {
 function updateTopBar() {
   const tx = Math.floor((player.x + player.w / 2) / CONFIG.TILE);
   const ty = Math.floor((player.y + player.h / 2) / CONFIG.TILE);
-  const areaName = lore.areaName(player) || structures.areaAt(tx, ty);
+  const areaName = lore.areaName(player) || structures.areaAt(tx, ty) || world.region(tx).name;
   setText(ui.navArea, 'area', areaName);
   setText(ui.weatherText, 'weather', `${weather.seasonName(worldMinutes)} · ${weather.conditionName()}`);
   setText(ui.ambientText, 'temp', `${weather.ambientTemp.toFixed(0)}°C`);
@@ -3625,6 +3746,7 @@ function updateTopBar() {
   setText(ui.archiveCountText, 'docs', `${lore.documentsFound().length}/${LORE_DOCUMENTS.length}`);
   const av = vehicles.active();
   setText(ui.vehicleNavText, 'vehicle', av ? 'DIRIGINDO' : vehicles.nearest(player, 5) ? 'PRÓXIMO' : '—');
+  if (ui.baseDaysText) ui.baseDaysText.textContent = `${sustainable.foodDays().toFixed(1)}D`;
 
   const minute = Math.floor(worldMinutes % 1440);
   const hh = String(Math.floor(minute / 60)).padStart(2, '0');
@@ -3658,7 +3780,7 @@ function nearActiveCampfire(radiusTiles = 3.2) {
 const anyModalOpen = () =>
   inventoryOpen || containerOpen || buildOpen || npcOpen || peopleOpen ||
   vehicleOpen || vehicleAssemblyOpen || radioOpen || archiveOpen || mapOpen ||
-  mainMenuOpen || creativeOpen;
+  sustainabilityOpen || mainMenuOpen || creativeOpen || opening.active;
 
 // Context prompt: one scan per frame over the candidates, closest wins.
 let promptTimer = 0;
@@ -3722,7 +3844,12 @@ function updateContextPrompt(dt) {
       : built.type === 'drying_rack' ? 'USAR VARAL DE SECAGEM'
       : built.type === 'kitchen_station' ? 'VER COZINHA DA BASE'
       : built.type === 'medical_station' ? 'VER ENFERMARIA DA BASE'
-      : built.type === 'guard_post' ? 'VER POSTO DE VIGIA' : 'USAR BANCADA';
+      : built.type === 'guard_post' ? 'VER POSTO DE VIGIA'
+      : built.type === 'water_reservoir' ? `COLETAR ÁGUA (${Math.round(built.water || 0)}/${built.waterCapacity || 80})`
+      : built.type === 'compost_bin' ? 'PRODUZIR COMPOSTO'
+      : built.type === 'pantry' ? 'ABRIR DESPENSA'
+      : built.type === 'seed_storage' ? 'ABRIR SEMENTES'
+      : BUILD_DEFS[built.type]?.stage39 ? 'GERENCIAR BASE SUSTENTÁVEL' : 'USAR BANCADA';
     text = `E — ${label}`;
   }
   if (!text) {
@@ -3748,6 +3875,7 @@ function updateContextPrompt(dt) {
 }
 
 function update(rawDt) {
+  opening.update(rawDt);
   // hit-stop slows the simulation briefly without touching the framerate
   let dt = rawDt;
   if (hitstop > 0) {
@@ -3876,8 +4004,10 @@ function update(rawDt) {
       }
     });
     if (!vehicles.active()) society.update(dt, player);
-    power.update(dt);
-    food.update(dt, weather.ambientTemp);
+    power.update(dt, { daylight:daylightFactor(), rainIntensity:weather.rainIntensity });
+    sustainable.update(dt);
+    greenwater.update(dt,player);
+    food.update(dt, weather.ambientTemp+(greenwater.active(player)?2.5:0));
     food.applyRegen(dt);
     farming.update(dt, { rainIntensity: weather.rainIntensity, ambientTemp: weather.ambientTemp, freezing: weather.freezing() });
     wildlife.update(dt, player, {
@@ -4077,6 +4207,7 @@ function typingInField(e) {
 
 // Closes whatever is on top; returns true if something was closed.
 function closeTopModal() {
+  if (sustainabilityOpen) { toggleSustainability(false); return true; }
   if (mapOpen) { toggleMap(false); return true; }
   if (vehicleAssemblyOpen) { closeVehicleAssembly(); return true; }
   if (vehicleOpen) { closeVehicleModal(); return true; }
@@ -4092,7 +4223,7 @@ function closeTopModal() {
 }
 
 const GAME_KEYS = ["a", "d", "w", "s", "c", " ", "arrowleft", "arrowright", "arrowup", "arrowdown",
-  "tab", "j", "k", "e", "q", "b", "n", "g", "f", "x", "v", "l", "r", "m", "h", "f10"];
+  "tab", "j", "k", "e", "q", "b", "n", "g", "f", "x", "v", "l", "r", "m", "h", "y", "f10"];
 
 document.addEventListener("keydown", e => {
   audio.unlock();
@@ -4103,6 +4234,7 @@ document.addEventListener("keydown", e => {
   }
 
   const k = e.key.toLowerCase();
+  if(opening.active){e.preventDefault();opening.handleKey(k);return;}
   if (k === 'escape' && !mainMenuOpen) { if(!closeTopModal()){mainMenuOpen=true;window.Stage32Menu?.open();} return; }
   if (mainMenuOpen) return;
   if (currentGameMode === 'free' && k === 'p') { window.Stage32Menu?.toggleCreative(); return; }
@@ -4113,6 +4245,7 @@ document.addEventListener("keydown", e => {
     return;
   }
   if (k === "m") { toggleMap(); return; }
+  if (k === "y") { toggleSustainability(); return; }
   if (GAME_KEYS.includes(k)) e.preventDefault();
 
   if (gameDead) {
@@ -4365,6 +4498,10 @@ ui.mapButton?.addEventListener("click", () => toggleMap());
 ui.closeMap?.addEventListener("click", () => toggleMap(false));
 ui.mapModal?.addEventListener("mousedown", e => { if (e.target === ui.mapModal) toggleMap(false); });
 ui.countyMap?.addEventListener("click", mapClick);
+ui.sustainabilityButton?.addEventListener("click", () => toggleSustainability());
+ui.closeSustainability?.addEventListener("click", () => toggleSustainability(false));
+ui.sustainabilityModal?.addEventListener("mousedown", e => { if (e.target === ui.sustainabilityModal) toggleSustainability(false); });
+ui.togglePowerOverlay?.addEventListener("click", () => { sustainable.overlay=!sustainable.overlay; renderSustainability(); showToast(sustainable.overlay?'Rede elétrica visível':'Rede elétrica oculta'); });
 ui.buildButton.addEventListener("click", () => { if (!inventoryOpen && !containerOpen) toggleBuild(); });
 ui.closeBuild.addEventListener("click", () => toggleBuild(false));
 ui.closeContainer.addEventListener("click", closeContainerModal);
@@ -4437,5 +4574,7 @@ renderBuildGrid();
 renderPeoplePanel();
 renderArchive();
 renderRadio();
+renderSustainability();
 updateUI();
+opening.start();
 requestAnimationFrame(frame);

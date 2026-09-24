@@ -11,9 +11,11 @@ const seeds = Number(process.argv[2] || 4);
 
 function boot(seed) {
   const ctx = vm.createContext({ console, Math, Map, Set, Array, Object, JSON, Uint8Array, Int16Array, Float32Array, Uint8ClampedArray, Number, String, Boolean });
-  for (const f of ['config.js', 'decor_data.js', 'world.js', 'structures.js', 'underground.js', 'lore.js']) {
+  for (const f of ['config.js', 'decor_data.js', 'world.js', 'structures.js', 'underground.js']) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', f), 'utf8'), ctx, { filename: f });
   }
+  vm.runInContext('const AREA_PROFILES={};',ctx);
+  for (const f of ['stage41_expeditions.js','stage41_1_polish.js','lore.js']) vm.runInContext(fs.readFileSync(path.join(ROOT,'js',f),'utf8'),ctx,{filename:f});
   vm.runInContext(`
     globalThis.__w = new World(${seed});
     globalThis.__s = new StructureManager(__w, ${seed});

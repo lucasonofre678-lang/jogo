@@ -601,7 +601,7 @@ class LoreSystem {
       if (tx >= b.startX + 28) return "Bunker Blackridge — Técnico";
       return "Bunker Blackridge";
     }
-    if (tx >= 858) return "Complexo Blackridge";
+    if (tx >= 858 && tx < 960) return "Complexo Blackridge";
     return null;
   }
 

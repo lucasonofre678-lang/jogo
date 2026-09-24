@@ -56,6 +56,31 @@ const REGIONS = [
     id: 'blackridge', name: 'Complexo Blackridge', from: 860, to: 960, profile: 'plateau',
     ground: [TILE.CONCRETE, TILE.DEAD_GRASS, TILE.GRAVEL], sub: TILE.DRY_DIRT,
     trees: 0.05, pines: 0.02, deadTrees: 0.5, bushes: 0.08, tallGrass: 0.16, flowers: 0.05
+  },
+  {
+    id: 'greenwater_pass', name: 'Passagem Greenwater', from: 960, to: 1050, profile: 'ridge',
+    ground: [TILE.MOSS_STONE, TILE.WET_GRASS, TILE.GRASS], sub: TILE.WET_DIRT,
+    trees: 0.72, pines: 0.38, deadTrees: 0.08, bushes: 0.62, tallGrass: 0.72, flowers: 0.28, stage40: true
+  },
+  {
+    id: 'greenwater_forest', name: 'Mata Profunda Greenwater', from: 1050, to: 1200, profile: 'hills',
+    ground: [TILE.WET_GRASS, TILE.LEAF_LITTER, TILE.GRASS], sub: TILE.WET_DIRT,
+    trees: 0.98, pines: 0.24, deadTrees: 0.04, bushes: 0.84, tallGrass: 0.9, flowers: 0.38, stage40: true
+  },
+  {
+    id: 'greenwater_marsh', name: 'Brejo Greenwater', from: 1200, to: 1360, profile: 'valley',
+    ground: [TILE.MUD, TILE.WET_GRASS, TILE.WET_DIRT], sub: TILE.WET_DIRT,
+    trees: 0.46, pines: 0.06, deadTrees: 0.12, bushes: 0.76, tallGrass: 0.96, flowers: 0.2, stage40: true
+  },
+  {
+    id: 'greenwater_farms', name: 'Campos Greenwater', from: 1360, to: 1530, profile: 'rolling',
+    ground: [TILE.GRASS, TILE.WET_GRASS, TILE.GRASS], sub: TILE.DIRT,
+    trees: 0.34, pines: 0.08, deadTrees: 0.06, bushes: 0.52, tallGrass: 0.78, flowers: 0.52, stage40: true
+  },
+  {
+    id: 'greenwater_meadow', name: 'Grande Planície Greenwater', from: 1530, to: 1900, profile: 'meadow',
+    ground: [TILE.GRASS, TILE.WET_GRASS, TILE.GRASS], sub: TILE.DIRT,
+    trees: 0.08, pines: 0.02, deadTrees: 0.01, bushes: 0.2, tallGrass: 0.58, flowers: 0.62, stage40: true, buildZone: true
   }
 ];
 
@@ -188,11 +213,34 @@ class World {
     }
 
     // Towns sit on graded ground: quantise the height so streets read flat.
-    let h = base + broad + rolling + detail + profile;
+    let h = region.profile === 'meadow'
+      ? base + (this.noise(x, 120, 71) - .5) * 3 + (this.noise(x, 32, 73) - .5) * 1.5
+      : base + broad + rolling + detail + profile;
     if (region.profile === 'plateau' || region.profile === 'flat') {
       h = Math.round(h / 3) * 3;
     }
     return Math.floor(h);
+  }
+
+  // Remove componentes de madeira/folhas que não possuem qualquer ligação
+  // com um bloco sólido. Corrige árvores deixadas no ar por remodelações do
+  // terreno e também repara saves que já registraram o defeito.
+  cleanFloatingVegetation(fromX=0,toX=CONFIG.WORLD_W-1){
+    const vegetation=new Set([TILE.WOOD,TILE.DARK_WOOD,TILE.LEAF,TILE.VINE]);
+    const seen=new Uint8Array(CONFIG.WORLD_W*CONFIG.WORLD_H);let removed=0;
+    const lo=Math.max(0,fromX|0),hi=Math.min(CONFIG.WORLD_W-1,toX|0);
+    for(let sx=lo;sx<=hi;sx++)for(let sy=0;sy<CONFIG.WORLD_H;sy++){
+      const start=this.idx(sx,sy);if(seen[start]||!vegetation.has(this.tiles[start]))continue;
+      const stack=[[sx,sy]],cells=[];seen[start]=1;let anchored=false;
+      while(stack.length){const [x,y]=stack.pop(),i=this.idx(x,y);cells.push(i);const here=this.tiles[i],below=y+1<CONFIG.WORLD_H?this.get(x,y+1):TILE.STONE;
+        // A crown touching a roof or a stray block is not a rooted tree. Only
+        // a trunk cell supported by solid terrain keeps the component alive.
+        if((here===TILE.WOOD||here===TILE.DARK_WOOD)&&!vegetation.has(below)&&TILE_INFO[below]?.solid)anchored=true;
+        for(const [nx,ny]of[[x-1,y],[x+1,y],[x,y-1],[x,y+1]]){if(nx<lo||nx>hi||ny<0||ny>=CONFIG.WORLD_H)continue;const ni=this.idx(nx,ny);if(!seen[ni]&&vegetation.has(this.tiles[ni])){seen[ni]=1;stack.push([nx,ny]);}}
+      }
+      if(!anchored)for(const i of cells){this.tiles[i]=TILE.AIR;this.walls[i]=TILE.AIR;removed++;}
+    }
+    return removed;
   }
 
   generate() {
@@ -241,6 +289,7 @@ class World {
     this.carveCliffs();
     this.carveRavine(640, 16, 26);
     this.carveCreeks();
+    this.carveGreenwater();
     this.carveCaves();
     this.carveCaveChambers();
     this.generateOreVeins();
@@ -327,6 +376,24 @@ class World {
         if (cut >= depth) this.set(x, bed - 1, TILE.WATER_SOURCE);
       }
       this.creeks.push({ x: cx, width });
+    }
+  }
+
+  // Stage 40: canais rasos e ilhas naturais tornam o brejo uma região com
+  // silhueta e travessia próprias, sem criar paredes de água intransponíveis.
+  carveGreenwater() {
+    for (const cx of [1088, 1160, 1188, 1268]) {
+      const width = cx === 1160 ? 13 : 8;
+      for (let x=cx-width;x<=cx+width;x++) {
+        if(!this.inBounds(x,0))continue;
+        const edge=1-Math.abs(x-cx)/(width+1),cut=Math.max(0,Math.round(edge*edge*4));
+        if(!cut)continue;
+        const top=this.surface[x];
+        for(let y=top;y<top+cut;y++){this.set(x,y,TILE.AIR);this.setWall(x,y,TILE.WET_DIRT);}
+        const bed=top+cut;this.set(x,bed,cut>=3?TILE.WET_DIRT:TILE.MUD);this.surface[x]=bed;
+        if(cut>=3&&x%3!==0)this.set(x,bed-1,TILE.WATER_SOURCE);
+      }
+      this.creeks.push({x:cx,width,greenwater:true});
     }
   }
 
@@ -566,7 +633,7 @@ class World {
     for (let x = 4; x < CONFIG.WORLD_W - 4; x++) {
       const region = this.region(x);
       const r = this.rand(x * 41);
-      if (r < region.trees * 0.22) {
+      if (r < region.trees * 0.27) {
         const kind = this.rand(x * 97) < region.pines ? 'pine' : this.rand(x * 53) < region.deadTrees ? 'dead' : 'broadleaf';
         this.makeTree(x, kind);
         x += 2 + Math.floor(this.rand(x * 13) * 3);
@@ -578,8 +645,8 @@ class World {
       const y = this.surface[x] - 1;
       if (this.get(x, y) !== TILE.AIR || !this.isSolid(x, y + 1)) continue;
       const r = this.rand(x * 313 + 7);
-      if (r < region.tallGrass * 0.55) this.set(x, y, TILE.TALL_GRASS);
-      else if (r < region.tallGrass * 0.55 + region.flowers * 0.18) this.set(x, y, TILE.DRY_FLOWERS);
+      if (r < region.tallGrass * 0.68) this.set(x, y, TILE.TALL_GRASS);
+      else if (r < region.tallGrass * 0.68 + region.flowers * 0.24) this.set(x, y, TILE.DRY_FLOWERS);
     }
   }
 
@@ -639,7 +706,7 @@ class World {
   }
 
   generateForage() {
-    for (let x = 14; x < CONFIG.WORLD_W - 10; x += 6) {
+    for (let x = 14; x < CONFIG.WORLD_W - 10; x += 5) {
       const region = this.region(x);
       const y = this.surface[x] - 1;
       if (this.rand(x * 313) < region.bushes && this.get(x, y) === TILE.AIR && this.isSolid(x, y + 1)) {

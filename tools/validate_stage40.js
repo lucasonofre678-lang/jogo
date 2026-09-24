@@ -1,0 +1,20 @@
+// Stage 40 static validation. Runtime and migration live in tools/smoke.js.
+const fs=require('fs'),path=require('path'),root=path.join(__dirname,'..'),bad=[];
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const cfg=read('js/config.js'),world=read('js/world.js'),content=read('js/stage40_content.js'),green=read('js/stage40_greenwater.js'),game=read('js/game.js'),save=read('js/savegame.js'),html=read('index.html');
+if(!/WORLD_W:\s*1900/.test(cfg)||!/WORLD_H:\s*184/.test(cfg))bad.push('mapa não está em 1900×184');
+if((world.match(/stage40:\s*true/g)||[]).length!==5)bad.push('cinco sub-regiões Greenwater não encontradas');
+for(const name of ['greenwater_pass','greenwater_forest','greenwater_marsh','greenwater_farms','greenwater_meadow'])if(!world.includes(`id: '${name}'`))bad.push(`região ausente: ${name}`);
+const itemBlock=content.match(/Object\.assign\(ITEM_DEFS,\s*\{([\s\S]*?)\n\}\);/)?.[1]||'',buildBlock=content.match(/Object\.assign\(BUILD_DEFS,\s*\{([\s\S]*?)\n\}\);/)?.[1]||'';
+const items=[...itemBlock.matchAll(/^\s{2}([a-z_]+):/gm)].map(x=>x[1]),builds=[...buildBlock.matchAll(/^\s{2}([a-z_]+):/gm)].map(x=>x[1]);
+if(items.length!==11)bad.push(`recursos: ${items.length}/11`);if(builds.length!==8)bad.push(`construções: ${builds.length}/8`);
+for(const id of items)if(!fs.existsSync(path.join(root,'assets/items',id+'.png')))bad.push(`ícone ausente: ${id}`);
+for(const id of builds)if(!fs.existsSync(path.join(root,'assets/build',id+'.png')))bad.push(`ícone ausente: ${id}`);
+if(!/version:(?:40|41)/.test(game)||!/39, 40(?:, 41)?/.test(save))bad.push('save v40+ ou compatibilidade v39 ausente');
+if(!game.includes('savedW<CONFIG.WORLD_W')||!game.includes('restoreGrid(tiles,world.tiles)'))bad.push('migração do grid antigo ausente');
+if(!world.includes('cleanFloatingVegetation')||!game.includes('world.cleanFloatingVegetation()'))bad.push('correção de vegetação flutuante ausente');
+if(!game.includes('greenwater:greenwater.exportState()')||!game.includes('greenwater.importState(save.greenwater)'))bad.push('roundtrip Greenwater ausente');
+if(!green.includes('class GreenwaterSystem')||!green.includes("o.type==='apiary'"))bad.push('sistema produtivo Greenwater ausente');
+if(html.indexOf('stage40_content.js')>html.indexOf('assets.js'))bad.push('conteúdo Stage 40 carrega tarde');
+if(html.indexOf('stage40_greenwater.js')>html.indexOf('js/game.js'))bad.push('sistema Stage 40 carrega tarde');
+if(bad.length){console.error('STAGE40 FAILED');for(const x of bad)console.error('- '+x);process.exit(1);}console.log(`STAGE40 OK — mapa 1900×184, 5 regiões, planície ampla, ${items.length} recursos, ${builds.length} construções, save v40`);

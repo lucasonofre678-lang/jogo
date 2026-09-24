@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="inventory-stage29.css">
   <link rel="stylesheet" href="menu-creative.css">
+  <link rel="stylesheet" href="stage39-survival.css">
+  <link rel="stylesheet" href="stage41-1-polish.css">
 </head>
 <body>
   <main class="shell">
@@ -38,6 +40,7 @@
         <button id="buildButton" class="act" type="button" title="Construção [B]"><img src="assets/ui/nav_build.png" alt=""><kbd>B</kbd></button>
         <button id="mapButton" class="act" type="button" title="Mapa [M]"><img src="assets/ui/nav_compass.png" alt=""><kbd>M</kbd></button>
         <button id="peopleButton" class="act" type="button" title="Pessoas [N]"><img src="assets/ui/nav_people.png" alt=""><kbd>N</kbd><b id="knownPeopleText">0</b></button>
+        <button id="sustainabilityButton" class="act survival-act" type="button" title="Sobrevivência da base [Y]"><img src="assets/ui/nav_build.png" alt=""><kbd>Y</kbd><b id="baseDaysText">—</b></button>
         <button id="vehicleButton" class="act" type="button" title="Veículo [G]"><img src="assets/ui/nav_vehicle.png" alt=""><kbd>G</kbd><b id="vehicleNavText">—</b></button>
         <button id="archiveButton" class="act" type="button" title="Arquivo [L]"><img src="assets/ui/nav_archive.png" alt=""><kbd>L</kbd><b id="archiveCountText">0/7</b></button>
       </nav>
@@ -73,6 +76,7 @@
         <span><kbd>DIREITO</kbd> colocar bloco</span>
         <span><kbd>E</kbd> interagir</span>
         <span><kbd>N</kbd> pessoas</span>
+        <span><kbd>Y</kbd> sobrevivência da base</span>
         <span><kbd>G</kbd> veículo</span>
         <span><kbd>H</kbd> buzina</span>
         <span><kbd>R</kbd> motor</span>
@@ -580,6 +584,44 @@
         </section>
       </div>
 
+      <div id="sustainabilityModal" class="modal hidden" role="dialog" aria-modal="true">
+        <section class="inventory-panel sustainability-panel">
+          <div class="inventory-head">
+            <div>
+              <span class="eyebrow">STAGE 39 · COMUNIDADE SUSTENTÁVEL</span>
+              <h2>BASE, ALIMENTO & ENERGIA</h2>
+              <p>Produção, reservas, cômodos funcionais e prioridades durante crises.</p>
+            </div>
+            <button id="closeSustainability" class="square-button" type="button">×</button>
+          </div>
+          <div class="survival-dashboard">
+            <div class="survival-metrics">
+              <article><span>ALIMENTO</span><strong id="stage39FoodDays">0 dias</strong><small>estimativa para a comunidade</small></article>
+              <article><span>ÁGUA</span><strong id="stage39Water">0 L</strong><small>chuva, reservatórios e bombas</small></article>
+              <article><span>HORTA</span><strong id="stage39Farm">0/0</strong><small>plantados e prontos</small></article>
+              <article><span>CONFORTO</span><strong id="stage39Comfort">0%</strong><small>cômodos funcionais</small></article>
+            </div>
+            <div class="survival-columns">
+              <section class="system-card power-card">
+                <header><div><span class="eyebrow">REDE ELÉTRICA</span><strong id="stage39PowerState">SEM REDE</strong></div><button id="togglePowerOverlay" type="button">VER CABOS</button></header>
+                <div class="power-bars">
+                  <label>PRODUÇÃO <b id="stage39Production">0 kW</b><i><em id="stage39ProductionFill"></em></i></label>
+                  <label>CONSUMO <b id="stage39Demand">0 kW</b><i><em id="stage39DemandFill"></em></i></label>
+                  <label>BATERIAS <b id="stage39Battery">0/0 kWh</b><i><em id="stage39BatteryFill"></em></i></label>
+                </div>
+                <p>Prioridade 1 permanece ligada primeiro. Clique em um aparelho para alterar.</p>
+                <div id="stage39Consumers" class="consumer-list"><small>Nenhum aparelho conectado.</small></div>
+              </section>
+              <section class="system-card">
+                <header><div><span class="eyebrow">CÔMODOS</span><strong>BASE FUNCIONAL</strong></div></header>
+                <div id="stage39Rooms" class="room-grid"></div>
+                <div class="system-hint"><b>PROGRESSÃO</b><span>coleta → horta → conservação → água → energia → automação → tecnologia Blackridge</span></div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+
       <div id="deathModal" class="modal hidden" role="dialog" aria-modal="true">
         <section class="death-panel">
           <span class="eyebrow danger-label">SOBREVIVENTE PERDIDO</span>
@@ -678,10 +720,21 @@
     </div>
   </div>
 
+  <div id="openingSequence" class="opening-sequence hidden" role="dialog" aria-modal="true" aria-label="Introdução da partida">
+    <section class="opening-card">
+      <span id="openingKicker" class="opening-kicker">ÚLTIMA TRANSMISSÃO</span>
+      <h2 id="openingTitle">DIA 1</h2>
+      <p id="openingCopy">O condado continua.</p>
+      <small id="openingHint" class="opening-hint">CLIQUE PARA AVANÇAR</small>
+    </section>
+  </div>
+
   <script src="js/config.js"></script>
   <script src="js/weapons.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/building.js"></script>
+  <script src="js/stage39_content.js"></script>
+  <script src="js/stage40_content.js"></script>
   <script src="js/decor_data.js"></script>
   <script src="js/animation.js"></script>
   <script src="js/wildlife.js"></script>
@@ -701,6 +754,8 @@
   <script src="js/places.js"></script>
   <script src="js/player.js"></script>
   <script src="js/enemies.js"></script>
+  <script src="js/stage41_expeditions.js"></script>
+  <script src="js/stage41_1_polish.js"></script>
   <script src="js/progression.js"></script>
   <script src="js/crafting.js"></script>
   <script src="js/society.js"></script>
@@ -715,6 +770,8 @@
   <script src="js/gamemode.js"></script>
   <script src="js/creative.js"></script>
   <script src="js/basecamp.js"></script>
+  <script src="js/stage39_survival.js"></script>
+  <script src="js/stage40_greenwater.js"></script>
   <script src="js/campaign.js"></script>
   <script src="js/fx.js"></script>
   <script src="js/hud.js"></script>

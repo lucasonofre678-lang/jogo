@@ -1,7 +1,7 @@
 const CONFIG = {
   TILE: 32,
-  WORLD_W: 960,
-  WORLD_H: 168,
+  WORLD_W: 1900,
+  WORLD_H: 184,
   CHUNK_W: 8,           // terrain render chunk, in tiles
   CHUNK_H: 8,
   GRAVITY: 0.72,

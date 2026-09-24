@@ -57,6 +57,9 @@ class BaseCampSystem {
     let job = { id:'idle', label:'Sem função', station:null };
     if (prof.includes('méd')) job = { id:'medic', label:'Enfermaria', station:'medical_station' };
     else if (prof.includes('mec')) job = { id:'mechanic', label:'Oficina', station:this.has('auto_bench') ? 'auto_bench' : 'workbench' };
+    else if (prof.includes('eletr')) job = { id:'electrician', label:'Rede elétrica', station:'distribution_box' };
+    else if (prof.includes('cozin')) job = { id:'cook', label:'Cozinha', station:'kitchen_station' };
+    else if (prof.includes('constru') || prof.includes('carpint')) job = { id:'builder', label:'Construção', station:'workbench' };
     // Stage 31: quem entende de terra vai para a horta assim que existir uma.
     // Sem canteiros, a mesma pessoa volta a ser a responsável pela despensa.
     else if (prof.includes('agric')) {
@@ -125,6 +128,8 @@ class BaseCampSystem {
     if (day <= this.lastProductionDay || !this.anchor()) return [];
     this.lastProductionDay = day;
     const made = [];
+    const ration = this.consumeDailyRations();
+    if (ration.people) made.push(ration.shortage ? `Rações insuficientes para ${ration.shortage} morador${ration.shortage === 1 ? '' : 'es'}` : `${ration.people} morador${ration.people === 1 ? '' : 'es'} alimentado${ration.people === 1 ? '' : 's'}`);
     for (const npc of this.residents()) {
       const job = this.jobFor(npc);
       if (!job.station || !this.has(job.station)) continue;
@@ -141,6 +146,16 @@ class BaseCampSystem {
         this.addStock('nails', 2); this.addStock('scrap_metal', 1);
         if ((npc.traits || []).includes('MECÂNICO NATO') && day % 2 === 1) this.addStock('scrap_metal', 1);
         made.push(`${npc.name}: peças e sucata`);
+      } else if (job.id === 'electrician') {
+        this.addStock('fuse', day % 2 === 0 ? 2 : 1);
+        if (day % 3 === 0) this.addStock('wire', 1);
+        made.push(`${npc.name}: manutenção da rede`);
+      } else if (job.id === 'cook') {
+        const cooked=this.cookFromStock();
+        if(cooked)made.push(`${npc.name}: ${cooked}`);else{this.addStock('vegetable_preserve',1);made.push(`${npc.name}: organizou a despensa`);}
+      } else if (job.id === 'builder') {
+        this.addStock('nails',2);if(day%2===0)this.addStock('wood',1);
+        made.push(`${npc.name}: materiais de construção`);
       } else if (job.id === 'farmer') {
         // O morador da horta rega tudo e colhe o que estiver pronto. É isso
         // que transforma a base num lugar que produz comida sozinho.
@@ -160,6 +175,20 @@ class BaseCampSystem {
     }
     if (made.length) this.worldState?.record?.('base_production', { day, made });
     return made;
+  }
+
+  // Stage 39: moradores agora consomem a despensa. A conta é deliberadamente
+  // simples: uma porção e meia garrafa por pessoa/dia, priorizando refeições.
+  consumeDailyRations() {
+    const residents=this.residents(), result={people:residents.length,shortage:0,waterShortage:0};
+    const foods=['expedition_meal','meat_stew','vegetable_soup','cooked_meat','baked_potato','vegetable_preserve','canned_food','berries'];
+    const takeOne=ids=>{for(const id of ids){const have=this.stock.get(id)||0;if(have<=0)continue;if(have===1)this.stock.delete(id);else this.stock.set(id,have-1);return true;}return false;};
+    for(const npc of residents){
+      if(!takeOne(foods)){result.shortage++;npc.morale=Math.max(0,(npc.morale??60)-5);}else npc.morale=Math.min(100,(npc.morale??60)+1);
+    }
+    const waterNeed=Math.ceil(residents.length/2);
+    for(let i=0;i<waterNeed;i++)if(!takeOne(['water_bottle','herbal_tea']))result.waterShortage++;
+    return result;
   }
 
   // Rega todos os canteiros e colhe os maduros direto para o estoque.

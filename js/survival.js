@@ -26,7 +26,9 @@ class Survival {
   update(dt, movement, environment = {}) {
     const exertion = movement.sprinting ? 1.75 : movement.crouching && movement.moving ? 0.95 : movement.moving ? 1.15 : 1;
     // Stage 31: comer bem economiza calorias; comer mal acelera a fome.
-    this.hunger -= dt * 0.105 * exertion * (environment.hungerScale ?? 1);
+    // Stage 39: a expedição cobra comida de verdade, mas a dificuldade vem de
+    // preparo e conservação — não de uma barra que evapora em poucos minutos.
+    this.hunger -= dt * 0.122 * exertion * (environment.hungerScale ?? 1);
     this.thirst -= dt * 0.16 * exertion;
     this.sleep -= dt * (movement.sprinting ? .095 : movement.moving ? .065 : .05);
 

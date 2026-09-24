@@ -214,6 +214,7 @@ class StructureManager {
     this.generateRegions();
     this.restoreInteractiveLayer();
     this.decorateWorld();
+    this.world.cleanFloatingVegetation();
     this.cur = null;
     this.computeWear();
   }
@@ -354,7 +355,7 @@ class StructureManager {
   computeWear() {
     const w = this.world;
     if (!w.wear) w.wear = new Uint8Array(CONFIG.WORLD_W);
-    const base = { coldwood: 60, pasture: 50, roadside: 80, crossing: 110, cedar: 110, downtown: 140, civic: 120, dustbowl: 150, westline: 160, ridge: 70, blackridge: 120 };
+    const base = { coldwood: 60, pasture: 50, roadside: 80, crossing: 110, cedar: 110, downtown: 140, civic: 120, dustbowl: 150, westline: 160, ridge: 70, blackridge: 120, greenwater_pass:75, greenwater_forest:42, greenwater_marsh:68, greenwater_farms:48, greenwater_meadow:32 };
     const byState = { intact: 40, looted: 120, barricaded: 100, infested: 175, damaged: 230 };
     for (let x = 0; x < CONFIG.WORLD_W; x++) w.wear[x] = base[w.region(x).id] ?? 90;
     for (const s of this.structures) {
@@ -367,12 +368,39 @@ class StructureManager {
   // No trunk or branch may box the player in on the first frame.
   clearSpawn() {
     const w = this.world;
-    for (let x = 19; x <= 29; x++) {
+    for (let x = 24; x <= 40; x++) {
       for (let y = 0; y < w.surface[x]; y++) {
         const t = w.get(x, y);
         if (t === TILE.WOOD || t === TILE.DARK_WOOD || t === TILE.LEAF || t === TILE.VINE) w.set(x, y, TILE.AIR);
       }
     }
+  }
+
+  // Decorative natural ledges only remain in the foreground when the player
+  // can actually stand on them. Unreachable pieces become background strata,
+  // preserving depth without pretending to be playable terrain.
+  cleanUnreachableNaturalLedges(protectedObjects = []) {
+    const natural=new Set([TILE.STONE,TILE.CRACKED_STONE,TILE.GRAVEL,TILE.RUBBLE,TILE.MOSS_STONE,TILE.SLATE]);
+    const W=CONFIG.WORLD_W,H=CONFIG.WORLD_H,visited=new Uint8Array(W*H),reachable=this.walkable(false).seen;
+    const protectedAt=(x,y)=>protectedObjects.some(o=>x>=o.tileX-1&&x<=o.tileX+(o.width||1)&&y>=o.tileY-(o.height||1)-1&&y<=o.tileY+1);
+    let removed=0;
+    for(let sx=1;sx<W-1;sx++)for(let sy=2;sy<Math.min(H-1,this.world.surface[sx]);sy++){
+      const start=sy*W+sx;if(visited[start]||!natural.has(this.world.get(sx,sy)))continue;
+      const stack=[[sx,sy]],cells=[];visited[start]=1;let playable=false,owned=false,protectedCell=false;
+      while(stack.length){
+        const [x,y]=stack.pop();cells.push([x,y]);
+        if(reachable[(y-1)*W+x])playable=true;
+        if(this.structureAt(x,y,1))owned=true;
+        if(protectedAt(x,y))protectedCell=true;
+        for(const [nx,ny]of[[x-1,y],[x+1,y],[x,y-1],[x,y+1]]){
+          if(nx<1||nx>=W-1||ny<2||ny>=H-1||ny>=this.world.surface[nx])continue;
+          const i=ny*W+nx;if(!visited[i]&&natural.has(this.world.get(nx,ny))){visited[i]=1;stack.push([nx,ny]);}
+        }
+      }
+      if(playable||owned||protectedCell||cells.length>64)continue;
+      for(const [x,y]of cells){const t=this.world.get(x,y);if(this.world.getWall(x,y)===TILE.AIR)this.world.setWall(x,y,t);this.world.set(x,y,TILE.AIR);removed++;}
+    }
+    return removed;
   }
 
   rand(n) {
@@ -465,7 +493,7 @@ class StructureManager {
     for (let x = lo; x <= hi; x++) {
       const natural = this.world.surface[x];
       y = Math.max(y - 1, Math.min(y + 1, Math.round(y * 0.75 + natural * 0.25)));
-      this.clearAbove(x, y - 7, y);
+      this.clearAbove(x, 0, y);
       this.world.set(x, y, tile);
       for (let d = 1; d <= 3; d++) {
         this.world.set(x, y + d, d < 2 ? TILE.DIRT : TILE.STONE);
@@ -1200,6 +1228,106 @@ class StructureManager {
     this.makeUndergroundMall();
     this.makeMaintenanceGalleries();
     this.makeDeepMine();
+    this.makeGreenwaterPlaces();
+  }
+
+  makeGreenwaterPlaces() {
+    // O asfalto termina em Blackridge; o Vale Verde é alcançado por uma
+    // estrada rural própria, pontuada por locais que reaproveitam a linguagem
+    // visual detalhada do condado e recebem nomes/loot exclusivos.
+    this.sideRoad(920, 1870, TILE.GRAVEL);
+    const rename=name=>{const s=this.structures[this.structures.length-1];if(s)s.name=name;return s;};
+    this.makeTrailhead(974); rename('Passagem Greenwater');
+    this.makeRangerStation(1002); rename('Estação Florestal Greenwater');
+    this.makeCabin(1030,'Cabana das Samambaias');
+    this.makeForestCamp(1062); rename('Acampamento do Vale');
+    this.makeCabin(1100,'Casa da Árvore Caída');
+    this.makeFarmAnnex(1134); rename('Viveiro Greenwater');
+    this.makeWarehouse(1172); rename('Serraria Greenwater');
+    this.makeCabin(1204,'Casa do Brejo');
+    this.makeFarm(1232); rename('Fazenda Greenwater');
+    this.makeFarmAnnex(1282); rename('Campos Comunitários Greenwater');
+    this.makeFarm(1370); rename('Fazenda do Vale Aberto');
+    this.makeFarmAnnex(1424); rename('Celeiros Greenwater');
+    this.makeCabin(1490,'Casa da Planície');
+    this.makeRangerStation(1560); rename('Torre da Grande Planície');
+    this.makeForestCamp(1594); rename('Acampamento dos Pioneiros');
+    this.makeCamper(1622); rename('Trailer do Guarda-Parque');
+    this.makeFarmAnnex(1650); rename('Horta Comunitária Greenwater');
+    this.makeCabin(1688,'Cabana do Campo Alto');
+    // 1715–1838 permanece como uma clareira ampla e contínua para a base.
+    this.makeTrailhead(1845); rename('Trilha do Lago Greenwater');
+    this.makeCamper(1867); rename('Acampamento do Limite Leste');
+    this.dressGreenwaterMeadow();
+  }
+
+  // Stage 40.2 — a planície precisa continuar excelente para construir, mas
+  // não pode parecer um mapa de teste. O conteúdo forma molduras nas bordas e
+  // pequenos núcleos exploráveis, preservando 124 colunas centrais livres.
+  dressGreenwaterMeadow() {
+    const w = this.world;
+
+    // Clareira principal: 124 colunas completamente niveladas para receber
+    // muralhas, oficinas, lavouras e uma rede elétrica grande.
+    const buildY = this.lotY(1715, 124);
+    this.levelGround(1715, 1838, buildY, TILE.GRASS, TILE.DIRT);
+
+    // A antiga estrada transformava toda a superfície em cascalho. Na
+    // planície ela passa a ser uma trilha rural interrompida pela vegetação.
+    for (let x = 1530; x <= 1888; x++) {
+      const y = w.surface[x];
+      if (this.inStructure(x, 1)) continue;
+      const onTrail = x < 1712 || x > 1840 ? x % 13 < 5 : x % 31 < 3;
+      w.set(x, y, onTrail ? TILE.DRY_DIRT : (x % 9 === 0 ? TILE.WET_GRASS : TILE.GRASS));
+    }
+
+    const prop = (asset, x, opts = {}) => {
+      if (!this.inStructure(x, 1)) this.addGroundProp(asset, x, { scale: 1, behind: true, ...opts });
+    };
+    const grove = (start, count, step, salt) => {
+      for (let i = 0; i < count; i++) {
+        const x = start + i * step;
+        prop(i % 3 === 1 ? 'pine_tree' : 'birch_tree', x, {
+          scale: .88 + this.rand(salt + i * 19) * .28,
+          flip: i % 2 === 0,
+          anim: 'sway'
+        });
+        if (i % 2 === 0) prop(i % 4 ? 'fern' : 'bush', x + 2, { scale: .9, anim: 'sway' });
+      }
+    };
+
+    // Bosques nas entradas e nas bordas da clareira, sem bloquear a construção.
+    grove(1534, 6, 7, 401);
+    grove(1608, 5, 8, 402);
+    grove(1692, 3, 6, 403);
+    grove(1841, 4, 8, 404);
+    grove(1880, 2, 7, 405);
+
+    // Pequenas cenas dão identidade e recursos sem ocupar a área principal.
+    [1584, 1616, 1642, 1682, 1840, 1885].forEach((x, i) => {
+      prop(i % 2 ? 'boulder' : 'fallen_log', x, { scale: .82 + i * .025, flip: i % 2 === 0 });
+      prop('wildflowers', x + 2, { scale: 1, anim: 'sway' });
+    });
+    [1710, 1840].forEach(x => {
+      prop('road_sign', x, { scale: .9, behind: false });
+      prop('wildflowers', x + 3, { scale: 1, anim: 'sway' });
+    });
+
+    // Área de descanso no limite oeste da clareira.
+    const restY = w.groundY(1707);
+    this.addProp('picnic_table', 1704, restY - 1, { scale: .9 });
+    this.addProp('water_trough', 1709, restY - 1, { scale: .85 });
+    this.addContainer('Caixa de suprimentos da planície', 1706, restY - 2,
+      'camp', this.loot('camp', 40201, 4, { guaranteed: true }));
+
+    // Mirante simples no extremo leste: recompensa atravessar a planície.
+    const eastY = w.groundY(1884);
+    this.addProp('road_sign', 1880, eastY - 1, { scale: .95 });
+    this.addProp('tent', 1883, eastY - 1, { scale: .9, behind: true, anim: 'sway' });
+    this.addProp('lawn_chair', 1887, eastY - 1, { scale: 1, flip: true });
+    this.addPoint('firepit', 1889, eastY - 1, { name: 'Fogueira do Mirante', state: 'cold' });
+    this.addContainer('Baú do Mirante Greenwater', 1886, eastY - 2,
+      'farm', this.loot('farm', 40202, 5, { guaranteed: true }), { rare: true });
   }
 
   // Stage 20.1: restore the interactive building layer that existed before
@@ -2796,6 +2924,11 @@ class StructureManager {
       westline: [['pallet', 0.05, 0], ['oil_drum', 0.04, 0], ['hazard_barrel', 0.02, 0], ['cable_spool', 0.02, 0], ['scrap_heap', 0.03, 0], ['tire_pile', 0.02, 0], ['gas_cylinders', 0.01, 0]],
       ridge: [['pine_tree', 0.08, 1], ['boulder', 0.08, 0], ['fern', 0.06, 0], ['birch_tree', 0.03, 1], ['stump', 0.03, 0]],
       blackridge: [['warning_sign', 0.03, 0], ['hazard_barrel', 0.03, 0], ['boulder', 0.02, 0], ['dead_tree', 0.03, 1]]
+      ,greenwater_pass: [['pine_tree',.08,1],['birch_tree',.06,1],['fern',.18,0],['boulder',.05,0],['fallen_log',.04,0]]
+      ,greenwater_forest: [['birch_tree',.11,1],['pine_tree',.08,1],['fern',.24,0],['mushrooms',.09,0],['bush',.1,0],['wildflowers',.08,0]]
+      ,greenwater_marsh: [['reeds',.24,0],['fern',.18,0],['bush',.1,0],['mushrooms',.08,0],['fallen_log',.04,0],['wildflowers',.05,0]]
+      ,greenwater_farms: [['wildflowers',.2,0],['bush',.08,0],['birch_tree',.04,1],['fern',.08,0],['hay_bale',.035,0],['garden_bed',.025,0]]
+      ,greenwater_meadow: [['wildflowers',.28,0],['bush',.035,0],['birch_tree',.008,1],['hay_bale',.018,0],['garden_bed',.012,0]]
     };
     for (let x = 4; x < CONFIG.WORLD_W - 4; x += 2) {
       if (this.inStructure(x, 1)) continue;

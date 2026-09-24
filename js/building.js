@@ -599,7 +599,9 @@ class BuildSystem {
 
   nearestInteractable(player) {
     return this.nearest(player, 2.8, o =>
-      ["door", "garage_door", "campfire", "workbench", "auto_bench", "furnace", "bed_build", "rain_barrel", "radio_station", "kitchen_station", "medical_station", "guard_post", "garden_plot", "water_trough", "snare_trap", "stove", "drying_rack"].includes(o.type));
+      ["door", "garage_door", "campfire", "workbench", "auto_bench", "furnace", "bed_build", "rain_barrel", "radio_station", "kitchen_station", "medical_station", "guard_post", "garden_plot", "water_trough", "snare_trap", "stove", "drying_rack"].includes(o.type) ||
+      (typeof STAGE39_BUILD_TYPES !== "undefined" && STAGE39_BUILD_TYPES.has(o.type)) ||
+      (typeof STAGE40_BUILD_TYPES !== "undefined" && STAGE40_BUILD_TYPES.has(o.type)));
   }
 
   nearestRepairable(player) {
@@ -779,6 +781,14 @@ class BuildSystem {
     }
     if (["kitchen_station","medical_station","guard_post"].includes(object.type)) {
       callbacks.onBaseStation?.(object);
+      return true;
+    }
+    if (typeof STAGE39_BUILD_TYPES !== "undefined" && STAGE39_BUILD_TYPES.has(object.type)) {
+      callbacks.onStage39?.(object);
+      return true;
+    }
+    if (typeof STAGE40_BUILD_TYPES !== "undefined" && STAGE40_BUILD_TYPES.has(object.type)) {
+      callbacks.onStage40?.(object);
       return true;
     }
     return false;
