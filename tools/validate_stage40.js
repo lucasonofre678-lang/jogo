@@ -10,7 +10,7 @@ const items=[...itemBlock.matchAll(/^\s{2}([a-z_]+):/gm)].map(x=>x[1]),builds=[.
 if(items.length!==11)bad.push(`recursos: ${items.length}/11`);if(builds.length!==8)bad.push(`construções: ${builds.length}/8`);
 for(const id of items)if(!fs.existsSync(path.join(root,'assets/items',id+'.png')))bad.push(`ícone ausente: ${id}`);
 for(const id of builds)if(!fs.existsSync(path.join(root,'assets/build',id+'.png')))bad.push(`ícone ausente: ${id}`);
-if(!/version:(?:40|41)/.test(game)||!/39, 40(?:, 41)?/.test(save))bad.push('save v40+ ou compatibilidade v39 ausente');
+if(!/version:(?:40|41|42)/.test(game)||!/39, 40, 41, 42/.test(save))bad.push('save v40+ ou compatibilidade v39 ausente');
 if(!game.includes('savedW<CONFIG.WORLD_W')||!game.includes('restoreGrid(tiles,world.tiles)'))bad.push('migração do grid antigo ausente');
 if(!world.includes('cleanFloatingVegetation')||!game.includes('world.cleanFloatingVegetation()'))bad.push('correção de vegetação flutuante ausente');
 if(!game.includes('greenwater:greenwater.exportState()')||!game.includes('greenwater.importState(save.greenwater)'))bad.push('roundtrip Greenwater ausente');

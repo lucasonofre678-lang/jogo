@@ -1,0 +1,10 @@
+STAGE 39 — INSTALAÇÃO
+
+1. Extraia o ZIP de atualização.
+2. Copie o conteúdo da pasta "jogo-main" para dentro da sua pasta "main".
+3. Confirme a substituição dos arquivos existentes.
+4. Abra index.html normalmente.
+
+Não apague seus saves do navegador. A atualização aceita os saves antigos listados no changelog.
+
+Atalho novo: Y abre o painel de sobrevivência e infraestrutura da base.

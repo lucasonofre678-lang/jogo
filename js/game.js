@@ -286,6 +286,16 @@ const baseCamp = new BaseCampSystem({
 });
 society.baseCamp = baseCamp;
 baseCamp.onNotice = (text, tone) => showToast(text, tone);
+const stage42 = new ZombiePopulationSystem({
+  world, danger, structures, player, building, baseCamp, society, power, hordes, seed,
+  getViewWidth: () => canvas.width,
+  getWorldMinutes: () => worldMinutes
+});
+stage42.announce = (text, tone) => showToast(text, tone);
+danger.onNoise = (x, y, radius, label) => {
+  worldState.onNoise(x, y, radius, label);
+  stage42.onNoise(x, radius, label);
+};
 const sustainable = new SustainableSurvivalSystem({
   world, building, structures, inventory, farming, food, power, baseCamp, society, weather,
   getWorldMinutes: () => worldMinutes
@@ -293,6 +303,13 @@ const sustainable = new SustainableSurvivalSystem({
 sustainable.onNotice = (text, tone) => showToast(text, tone);
 const greenwater = new GreenwaterSystem({world,structures,building,inventory,farming,weather,getWorldMinutes:()=>worldMinutes});
 greenwater.onNotice=(text,tone)=>showToast(text,tone);
+// Stage 42 — jornada de progressão, projetos e o mapa 2.0.
+const journey42 = new Stage42Journey({
+  progression, crafting, building, inventory, structures, places, lore, player,
+  notify:(text, tone) => showToast(text, tone)
+});
+const countyMapView = new CountyMapView(ui.countyMap);
+countyMapView.onChange = () => renderCountyMap();
 const opening=new OpeningSequence({
   fresh:Boolean(pendingNew),mode:currentGameMode,
   onFinish:()=>showToast('Vasculhe o Ponto de Evacuação 12 e procure abrigo antes da noite','warn')
@@ -459,7 +476,7 @@ function categoryLabel(category) {
   return {
     tool:"FERRAMENTA", firearm:"ARMA", ammo:"MUNIÇÃO", light:"UTILIDADE", food:"COMIDA", drink:"BEBIDA", medical:"MEDICINA",
     container:"RECIPIENTE", material:"MATERIAL", component:"COMPONENTE", clothing:"ROUPA", seed:"SEMENTE",
-    currency:"MOEDA", key:"CHAVE"
+    currency:"MOEDA", key:"CHAVE", blueprint:"PROJETO"
   }[category] || category.toUpperCase();
 }
 
@@ -467,7 +484,7 @@ function categoryTone(category) {
   return {
     tool:"#a27b50", firearm:"#9b6654", ammo:"#a98655", light:"#b6a666", food:"#8a9d65", drink:"#638aa0", medical:"#a76866",
     container:"#7c8588", material:"#796a59", component:"#69787a", clothing:"#66786d", seed:"#7f9257",
-    currency:"#b79a58", key:"#778a91"
+    currency:"#b79a58", key:"#778a91", blueprint:"#c9b98f"
   }[category] || "#788083";
 }
 
@@ -481,7 +498,7 @@ function inventoryVisibleEntries(entries) {
     const hay = [def.name, def.description, categoryLabel(def.category), arsenal?.classLabel?.(entry.id) || ""].join(" ").toLowerCase();
     return hay.includes(q);
   });
-  const categoryOrder = { firearm:0, ammo:1, tool:2, light:3, clothing:4, medical:5, food:6, drink:7, seed:8, container:9, component:10, material:11, currency:12, key:13 };
+  const categoryOrder = { firearm:0, ammo:1, tool:2, light:3, clothing:4, medical:5, food:6, drink:7, seed:8, container:9, component:10, material:11, currency:12, key:13, blueprint:14 };
   return filtered.sort((a,b) => {
     const da=ITEM_DEFS[a.id], db=ITEM_DEFS[b.id];
     if (inventorySortMode === "name") return da.name.localeCompare(db.name);
@@ -1005,6 +1022,11 @@ function persistCraftUi() {
 }
 
 function craftSourceHint(recipe) {
+  // Stage 42: name the places for what is missing; otherwise say what it feeds.
+  const missing = crafting.materialStatus(recipe).filter(r => r.have < r.need);
+  if (missing.length) return missing.slice(0, 2).map(r => `${(r.def?.name || r.id).toUpperCase()}: ${s42Source(r.id)}`).join(' · ');
+  const used = s42UsedIn(recipe.output?.id).filter(n => n !== recipe.name).slice(0, 3);
+  if (used.length) return `USADO EM: ${used.join(', ')}`;
   if (recipe.category === "MINERAÇÃO") return "MINA / PEDREIRA / GALERIAS";
   if (recipe.category === "ARMAS") return "OFICINA / DELEGACIA / BLACKRIDGE";
   if (recipe.category === "MEDICINA") return "CLÍNICA / HOSPITAL / FARMÁCIA";
@@ -1079,6 +1101,32 @@ function doCraft(recipeId, amount=1) {
   renderHotbar(); renderInventory(); updateUI(); renderPinnedRecipe();
 }
 
+// Stage 42: the journey on top of the crafting pane — where you are, what to
+// do next and what it opens. One glance, no manual.
+function renderJourneyStrip() {
+  const el = document.getElementById('journeyStrip');
+  if (!el) return;
+  // The field inventory (Stage 29) folds crafting into a collapsed panel: the
+  // journey goes to the top of that column and crafting starts open, with a
+  // count of what can be made right now.
+  const column = el.closest?.('.field-transfer');
+  if (column && el.parentElement !== column) column.querySelector?.('header')?.after?.(el);
+  const fold = document.querySelector?.('.field-crafting');
+  if (fold) {
+    if (!fold.dataset.s42) { fold.open = true; fold.dataset.s42 = '1'; }
+    const ready = CRAFT_RECIPES.filter(r => crafting.isUnlocked(r, player) && crafting.canAfford(r)).length;
+    const summary = fold.querySelector?.('summary');
+    if (summary) summary.textContent = `FABRICAÇÃO DE CAMPO · ${ready} pronta${ready === 1 ? '' : 's'}`;
+  }
+  const j = journey42.current();
+  const steps = S42_JOURNEY.map((st, i) => `<i class="${i < j.index || j.complete ? 'done' : i === j.index ? 'now' : ''}" title="${st.title}">${st.short}</i>`).join('');
+  const tasks = j.complete ? '' : j.tasks.map(t => `<li class="${t.done ? 'done' : ''}">${t.done ? '✓' : '·'} ${t.label}</li>`).join('');
+  el.innerHTML = `<div class="journey-steps">${steps}</div>
+    <strong>${j.complete ? 'JORNADA COMPLETA' : `ETAPA ${j.index + 1}/${j.total} · ${j.step.title.toUpperCase()}`}</strong>
+    <p>${j.complete ? 'Toda a tecnologia conhecida do condado está liberada.' : j.step.goal}</p>
+    ${j.complete ? '' : `<ul>${tasks}</ul><small>PRÓXIMO DESBLOQUEIO · ${j.step.unlock.toUpperCase()} — ${j.step.where}</small>`}`;
+}
+
 function renderCrafting() {
   if (!ui.craftList) return;
   progression.observe();
@@ -1090,9 +1138,11 @@ function renderCrafting() {
   const furnace = building.hasFurnaceNear(player);
   const fire = nearActiveCampfire(3.4);
   const tier = progression.current();
-  const station = autoBench ? "GARAGEM" : furnace ? "FORNALHA" : bench ? "BANCADA" : fire ? "FOGUEIRA" : "CAMPO";
+  const weaponBench = journey42.weaponBenchNear(player, false);
+  const station = weaponBench ? (weaponBench.powered ? "ARMAMENTO" : "ARMAMENTO SEM ENERGIA") : autoBench ? "GARAGEM" : furnace ? "FORNALHA" : bench ? "BANCADA" : fire ? "FOGUEIRA" : "CAMPO";
   ui.benchStatus.textContent = `${tier.short} ${tier.name} · ${station}`;
-  ui.benchStatus.classList.toggle("online", bench || autoBench || furnace || fire);
+  ui.benchStatus.classList.toggle("online", bench || autoBench || furnace || fire || Boolean(weaponBench?.powered));
+  renderJourneyStrip();
   ui.craftList.innerHTML = "";
 
   const recipes = CRAFT_RECIPES.filter(craftRecipeMatches);
@@ -1120,10 +1170,10 @@ function renderCrafting() {
     card.innerHTML=`
       <div class="craft-icon">${ITEM_DEFS[out]?itemIconHtml(out,"craft-item-icon",40):""}</div>
       <div class="craft-copy">
-        <header><h3>${recipe.name}${recipe.output.qty>1?` ×${recipe.output.qty}`:""}</h3><span class="tag">${recipe.category} · ${progression.labelFor(recipe)}</span></header>
+        <header><h3>${recipe.name}${recipe.output.qty>1?` ×${recipe.output.qty}`:""}</h3><span class="tag">${recipe.category} · ${journey42.recipeKind(recipe)}</span></header>
         <p>${recipe.description}</p>
         <div class="ingredient-list">${craftIngredientHtml(recipe)}</div>
-        <small class="craft-source">ONDE BUSCAR · ${craftSourceHint(recipe)}</small>
+        <small class="craft-source">${crafting.canAfford(recipe) ? '' : 'ONDE BUSCAR · '}${craftSourceHint(recipe)}</small>
       </div>
       <div class="craft-card-tools">
         <button type="button" class="craft-star ${favorite?'active':''}" data-favorite="${recipe.id}" title="Favoritar">★</button>
@@ -1173,9 +1223,10 @@ function renderBuildGrid() {
 
   for (const [type, def] of Object.entries(BUILD_DEFS)) {
     if (buildFilter !== "TODOS" && def.category !== buildFilter) continue;
-    const affordable = currentGameMode === 'free' || building.canAfford(type);
+    const lock = currentGameMode === 'free' ? null : journey42.buildLock(type);
+    const affordable = currentGameMode === 'free' || (!lock && building.canAfford(type));
     const card = document.createElement("article");
-    card.className = `build-card ${affordable ? "affordable" : ""}`;
+    card.className = `build-card ${affordable ? "affordable" : ""} ${lock ? "locked" : ""}`;
     card.style.setProperty("--build-tone", def.color || "#776a55");
     card.innerHTML = `
       <div class="build-icon"><img src="assets/build/${type}.png" alt=""></div>
@@ -1183,9 +1234,9 @@ function renderBuildGrid() {
         <span class="build-category">${def.category}</span>
         <h3>${def.name}</h3>
         <p>${def.description}</p>
-        <span class="cost">${building.costText(type)}</span>
+        <span class="cost">${lock ? lock.replace(/^[^:]*: /, '').toUpperCase() : building.costText(type)}</span>
       </div>
-      <button type="button" data-build="${type}" ${affordable ? "" : "disabled"}>${currentGameMode === 'free' ? "CRIAR" : affordable ? "CONSTRUIR" : "RECURSOS"}</button>`;
+      <button type="button" data-build="${type}" ${affordable ? "" : "disabled"}>${currentGameMode === 'free' ? "CRIAR" : lock ? "BLOQUEADO" : affordable ? "CONSTRUIR" : "RECURSOS"}</button>`;
     ui.buildGrid.appendChild(card);
   }
 
@@ -1404,6 +1455,10 @@ function interactBuiltObject() {
     // Sleeping is the real payoff of having a base: it skips the night, but
     // only when nothing is hunting you.
     onBed(bed) {
+      if (stage42.event.phase === 'active') {
+        showToast("A base está sob pressão. Não é hora de dormir.", 'danger');
+        return;
+      }
       const threat = danger.nearbyThreat(player, 14);
       if (threat.count > 0) {
         showToast("Perigoso demais para dormir com infectados por perto", 'warn');
@@ -1411,11 +1466,13 @@ function interactBuiltObject() {
       }
       const minute = worldMinutes % 1440;
       const untilMorning = minute > 360 ? 1440 - minute + 360 : 360 - minute;
-      const hours = Math.max(1, untilMorning / 60);
-      survival.rest(untilMorning, nearActiveCampfire());
-      worldMinutes += untilMorning;
+      const crossesEvent = stage42.event.nextAt > worldMinutes && stage42.event.nextAt < worldMinutes + untilMorning;
+      const restMinutes = crossesEvent ? Math.max(30, stage42.event.nextAt - worldMinutes - 120) : untilMorning;
+      const hours = Math.max(.5, restMinutes / 60);
+      survival.rest(restMinutes, nearActiveCampfire());
+      worldMinutes += restMinutes;
       danger.noiseLevel = 0;
-      showToast(`Você dormiu ${hours.toFixed(0)}h e acordou ao amanhecer`, 'good');
+      showToast(crossesEvent ? `Você acordou após ${hours.toFixed(1)}h — há movimento nas estradas` : `Você dormiu ${hours.toFixed(0)}h e acordou ao amanhecer`, crossesEvent ? 'warn' : 'good');
       renderHotbar(); renderInventory(); updateUI();
     },
     onBarrel(barrel) {
@@ -1436,6 +1493,11 @@ function interactBuiltObject() {
     onRadioStation() {
       toggleRadio(true);
       showToast("Estação da base conectada ao receptor", 'good');
+    },
+    onStage42Defense(object) {
+      const result = stage42.interactDefense(object);
+      showToast(result.reason, result.ok ? 'good' : 'warn');
+      if (result.ok && object.type === 'decoy_siren') audio.world('alarm', audioPan(object.tileX * CONFIG.TILE));
     },
     // --------------------------------------------------- Stage 31: horta
     onGardenPlot(plot) {
@@ -1764,96 +1826,10 @@ function mapStructurePoint(s) {
 }
 
 function renderCountyMap() {
-  const canvasMap = ui.countyMap;
-  if (!canvasMap) return;
-  const mc = canvasMap.getContext('2d');
-  const W = canvasMap.width, H = canvasMap.height;
-  const sx = W / CONFIG.WORLD_W, sy = H / CONFIG.WORLD_H;
-  mc.clearRect(0, 0, W, H);
-  mc.fillStyle = '#0d1315'; mc.fillRect(0, 0, W, H);
-
-  // Region discovery is the fog-of-war layer. Unknown county stays almost black.
-  for (let x = 0; x < CONFIG.WORLD_W; x += 2) {
-    const region = world.region(x);
-    const known = worldState.discoveredRegions.has(region.id);
-    const gy = world.groundY(x);
-    const px = x * sx, py = gy * sy;
-    mc.fillStyle = known ? 'rgba(72,86,73,.55)' : 'rgba(31,38,40,.32)';
-    mc.fillRect(px, py, Math.max(2, sx * 2 + 1), H - py);
-    if (known) {
-      const tile = world.get(x, Math.min(CONFIG.WORLD_H - 1, gy));
-      if ([TILE.ASPHALT,TILE.CRACKED_ASPHALT,TILE.ROAD_LINE].includes(tile)) {
-        mc.fillStyle = 'rgba(151,147,128,.36)';
-        mc.fillRect(px, py - 2, Math.max(2, sx * 2 + 1), 3);
-      }
-    }
-  }
-
-  // Major discovered structures — surface in green-gold, underground in blue.
-  mc.font = '600 9px "Courier New", monospace';
-  mc.textBaseline = 'middle';
-  for (const s of structures.structures) {
-    if (!s.discovered) continue;
-    const pt = mapStructurePoint(s), x = pt.tx * sx, y = pt.ty * sy;
-    const underground = Boolean(s.underground || ['metro','mine','maintenance','drainage','underground_mall'].includes(s.type));
-    mc.fillStyle = underground ? '#788b9d' : '#9cab82';
-    mc.fillRect(Math.round(x) - 3, Math.round(y) - 3, 7, 7);
-    if ((s.endX - s.x) >= 22 || ['hospital','police','firestation','blackridge','mine','metro','substation','apartments'].includes(s.type)) {
-      const label = String(s.name || s.type).toUpperCase();
-      const tw = mc.measureText(label).width + 8;
-      mc.fillStyle = 'rgba(8,12,13,.72)'; mc.fillRect(x + 6, y - 7, tw, 14);
-      mc.fillStyle = underground ? '#a8bac7' : '#d4d0b5'; mc.fillText(label, x + 10, y);
-    }
-  }
-
-  // Known vehicles make the map useful for logistics, not just orientation.
-  for (const v of vehicles.vehicles || []) {
-    const tx = (v.x + v.w/2) / CONFIG.TILE;
-    const region = world.region(Math.max(0, Math.min(CONFIG.WORLD_W - 1, Math.floor(tx))));
-    if (!worldState.discoveredRegions.has(region.id)) continue;
-    const ty = (v.y + v.h/2) / CONFIG.TILE;
-    mc.fillStyle = '#b09061';
-    mc.fillRect(tx * sx - 2, ty * sy - 2, 5, 5);
-  }
-
-  // Stage 22 radio opportunities appear as approximate areas instead of GPS-perfect labels.
-  for (const signal of baseCamp.activeMapSignals()) {
-    const x = signal.tileX * sx, y = signal.tileY * sy;
-    mc.strokeStyle = '#c89a58'; mc.lineWidth = 2;
-    mc.beginPath(); mc.arc(x, y, 10, 0, Math.PI * 2); mc.stroke();
-    mc.fillStyle = 'rgba(200,154,88,.18)'; mc.beginPath(); mc.arc(x, y, 18, 0, Math.PI * 2); mc.fill();
-  }
-  // Stage 23 operations are larger expeditions; triangles distinguish them from small radio jobs.
-  for (const signal of campaign.activeMapSignals()) {
-    const x = signal.tileX * sx, y = signal.tileY * sy;
-    mc.strokeStyle = '#d17a62'; mc.fillStyle = 'rgba(209,122,98,.18)'; mc.lineWidth = 2;
-    mc.beginPath(); mc.moveTo(x, y-10); mc.lineTo(x+9, y+7); mc.lineTo(x-9, y+7); mc.closePath(); mc.fill(); mc.stroke();
-  }
-  for (const event of campaign.majorEventMapSignal()) {
-    const x = event.tileX * sx, y = event.tileY * sy;
-    mc.strokeStyle = '#c84f48'; mc.lineWidth = 2; mc.setLineDash?.([5,4]);
-    mc.beginPath(); mc.arc(x, y, 22, 0, Math.PI * 2); mc.stroke(); mc.setLineDash?.([]);
-  }
-
-  const baseAnchor = baseCamp.anchor();
-  if (baseAnchor) {
-    const bx = (baseAnchor.x / CONFIG.TILE) * sx, by = (baseAnchor.y / CONFIG.TILE) * sy;
-    mc.fillStyle = '#8daf87'; mc.fillRect(bx - 4, by - 4, 9, 9);
-    mc.strokeStyle = '#d8d0bd'; mc.strokeRect(bx - 5, by - 5, 11, 11);
-  }
-
-  for (const marker of mapMarkers) {
-    const x = marker.tileX * sx, y = marker.tileY * sy;
-    mc.strokeStyle = '#c36f59'; mc.lineWidth = 2;
-    mc.beginPath(); mc.moveTo(x - 5, y); mc.lineTo(x + 5, y); mc.moveTo(x, y - 5); mc.lineTo(x, y + 5); mc.stroke();
-  }
-
+  if (!ui.countyMap) return;
+  countyMapView.render();
   const pc = player.center();
   const ptx = pc.x / CONFIG.TILE, pty = pc.y / CONFIG.TILE;
-  mc.fillStyle = '#e0d89c';
-  mc.beginPath(); mc.arc(ptx * sx, pty * sy, 5, 0, Math.PI * 2); mc.fill();
-  mc.strokeStyle = '#161a19'; mc.lineWidth = 2; mc.stroke();
-
   const region = world.region(Math.max(0, Math.min(CONFIG.WORLD_W - 1, Math.floor(ptx))));
   ui.mapPositionText.textContent = `X ${Math.floor(ptx)} · Y ${Math.floor(pty)}`;
   ui.mapRegionText.textContent = region.name;
@@ -1864,9 +1840,14 @@ function renderCountyMap() {
     const signals = baseCamp.activeMapSignals().length + campaign.activeMapSignals().length + campaign.majorEventMapSignal().length;
     ui.mapSignalText.textContent = `${signals} sinal${signals === 1 ? '' : 'is'} de rádio`;
   }
-  const prog = progression.summary();
-  ui.progressionTierText.textContent = `${prog.current.short} · ${prog.current.name}`;
-  ui.progressionHintText.textContent = prog.hint;
+  // Stage 42: the side panel is the journey — where you are, what next, where.
+  const j = journey42.current(), prog = progression.summary();
+  ui.progressionTierText.textContent = j.complete ? 'JORNADA COMPLETA' : `ETAPA ${j.index + 1}/${j.total} · ${j.step.title}`;
+  ui.progressionHintText.textContent = j.complete ? 'A tecnologia de Blackridge está nas suas mãos.' : j.step.goal;
+  const whereEl = document.getElementById('journeyWhereText');
+  if (whereEl) whereEl.textContent = j.complete ? '' : `ONDE · ${j.step.where}`;
+  const nextEl = document.getElementById('journeyNextText');
+  if (nextEl) nextEl.textContent = `${prog.current.short} · ${prog.current.name}${j.complete ? '' : ` · PRÓXIMO: ${j.step.unlock}`}`;
 }
 
 function toggleMap(force) {
@@ -1881,6 +1862,7 @@ function toggleMap(force) {
     if (radioOpen) toggleRadio(false);
     if (archiveOpen) toggleArchive(false);
     if (vehicleOpen) closeVehicleModal();
+    { const pc = player.center(); countyMapView.centerOn(pc.x / CONFIG.TILE, pc.y / CONFIG.TILE); countyMapView.clampCenter(); }
     renderCountyMap();
   }
   ui.mapModal.classList.toggle('hidden', !mapOpen);
@@ -1925,9 +1907,10 @@ function toggleSustainability(force) {
 
 function mapClick(e) {
   if (!mapOpen || !ui.countyMap) return;
-  const rect = ui.countyMap.getBoundingClientRect();
-  const tx = Math.max(0, Math.min(CONFIG.WORLD_W - 1, Math.floor(((e.clientX - rect.left) / rect.width) * CONFIG.WORLD_W)));
-  const ty = Math.max(0, Math.min(CONFIG.WORLD_H - 1, Math.floor(((e.clientY - rect.top) / rect.height) * CONFIG.WORLD_H)));
+  if (!countyMapView.takeClick()) return;
+  const hit = countyMapView.toTile(e.clientX, e.clientY);
+  const tx = Math.max(0, Math.min(CONFIG.WORLD_W - 1, Math.floor(hit.tx)));
+  const ty = Math.max(0, Math.min(CONFIG.WORLD_H - 1, Math.floor(hit.ty)));
   const existing = mapMarkers.findIndex(m => Math.abs(m.tileX - tx) <= 5 && Math.abs(m.tileY - ty) <= 5);
   if (existing >= 0) mapMarkers.splice(existing, 1);
   else mapMarkers.push({ tileX: tx, tileY: ty });
@@ -2648,7 +2631,7 @@ function startNewSurvivor() {
 
 function exportGameState() {
   return {
-    version:41,
+    version:42,
     seed,
     savedAt:Date.now(),
     mode:currentGameMode,
@@ -2690,6 +2673,8 @@ function exportGameState() {
     farming:{ version:1, lastMinutes:farming.lastMinutes, harvestedTotal:farming.harvestedTotal, lastTrapMinute },
     sustainable:sustainable.exportState(),
     greenwater:greenwater.exportState(),
+    stage42:stage42.exportState(),
+    journey42:journey42.exportState(),
     danger:{ kills:danger.kills }
   };
 }
@@ -2812,7 +2797,14 @@ function loadGameState(data = null, silent = false) {
   }
   sustainable.importState(save.sustainable);
   greenwater.importState(save.greenwater);
+  // Stage 42 progression (a save written by the standalone progression build kept it under "stage42")
+  journey42.importState(save.journey42 ?? (Array.isArray(save.stage42?.known) ? save.stage42 : undefined));
   if (save.danger) danger.kills = save.danger.kills || 0;
+  if (!stage42.importState(save.stage42)) {
+    stage42.lastKills = danger.kills;
+    stage42.lastMinutes = worldMinutes;
+    if (stage42.event.nextAt <= worldMinutes + 60) stage42.event.nextAt = worldMinutes + 1440;
+  }
   currentGameMode = save.mode === 'free' ? 'free' : 'survival';
   creative.enabled = currentGameMode === 'free';
   if (save.creative) creative.importState(save.creative);
@@ -3705,6 +3697,7 @@ function draw(dt) {
   const tension = Math.min(1, cachedThreat.chasing * .5 + (survival.health < 30 ? .4 : 0));
   fx.drawScreen(ctx, tension);
   structures.drawInterference(ctx);
+  stage42.drawAtmosphere(ctx);
 
   hud.draw(ctx, {
     survival, injuries, lore, danger, weather, player,
@@ -3723,6 +3716,7 @@ function draw(dt) {
     season: weather.report(worldMinutes),
     game: wildlife.nearestAnimal(player)
   }, dt);
+  stage42.drawHUD(ctx);
 }
 
 // The DOM top bar only carries slow-moving information, and it is only
@@ -4007,6 +4001,7 @@ function update(rawDt) {
     power.update(dt, { daylight:daylightFactor(), rainIntensity:weather.rainIntensity });
     sustainable.update(dt);
     greenwater.update(dt,player);
+    journey42.update(dt);
     food.update(dt, weather.ambientTemp+(greenwater.active(player)?2.5:0));
     food.applyRegen(dt);
     farming.update(dt, { rainIntensity: weather.rainIntensity, ambientTemp: weather.ambientTemp, freezing: weather.freezing() });
@@ -4024,6 +4019,7 @@ function update(rawDt) {
     }
     places.update(dt);
     if (currentGameMode !== 'free' || creativeThreats) hordes.update(dt);
+    stage42.update(dt, currentGameMode !== 'free' || creativeThreats);
     building.updateUtilities(dt, weather.rainIntensity);
     objectives.update(dt);
     // Stage 20: which structure we are in, first visits, secret rooms, ambience
@@ -4498,6 +4494,9 @@ ui.mapButton?.addEventListener("click", () => toggleMap());
 ui.closeMap?.addEventListener("click", () => toggleMap(false));
 ui.mapModal?.addEventListener("mousedown", e => { if (e.target === ui.mapModal) toggleMap(false); });
 ui.countyMap?.addEventListener("click", mapClick);
+document.getElementById('mapZoomIn')?.addEventListener('click', () => { countyMapView.setZoom(countyMapView.zi + 1); renderCountyMap(); });
+document.getElementById('mapZoomOut')?.addEventListener('click', () => { countyMapView.setZoom(countyMapView.zi - 1); renderCountyMap(); });
+document.getElementById('mapCenter')?.addEventListener('click', () => { const pc = player.center(); countyMapView.centerOn(pc.x / CONFIG.TILE, pc.y / CONFIG.TILE); countyMapView.clampCenter(); renderCountyMap(); });
 ui.sustainabilityButton?.addEventListener("click", () => toggleSustainability());
 ui.closeSustainability?.addEventListener("click", () => toggleSustainability(false));
 ui.sustainabilityModal?.addEventListener("mousedown", e => { if (e.target === ui.sustainabilityModal) toggleSustainability(false); });

@@ -127,12 +127,12 @@ sandbox.window.document = document_;
 const context = vm.createContext(sandbox);
 
 const FILES = [
-  'config.js', 'weapons.js', 'audio.js', 'building.js', 'stage39_content.js', 'stage40_content.js', 'decor_data.js', 'animation.js', 'wildlife.js',
+  'config.js', 'weapons.js', 'audio.js', 'building.js', 'stage39_content.js', 'stage40_content.js', 'stage42_content.js', 'decor_data.js', 'animation.js', 'wildlife.js',
   'assets.js', 'inventory.js', 'survival.js', 'weather.js', 'food.js', 'farming.js', 'injuries.js',
   'world.js', 'mining.js', 'terrain.js', 'structures.js', 'underground.js', 'world_state.js', 'places.js',
   'player.js', 'enemies.js', 'stage41_expeditions.js', 'stage41_1_polish.js', 'progression.js', 'crafting.js', 'society.js', 'vehicles.js',
   'vehicle_crafting.js', 'power.js', 'lore.js', 'objectives.js', 'hordes.js',
-  'events.js', 'savegame.js', 'gamemode.js', 'creative.js', 'basecamp.js', 'stage39_survival.js', 'stage40_greenwater.js', 'campaign.js', 'fx.js', 'hud.js', 'game.js',
+  'events.js', 'savegame.js', 'gamemode.js', 'creative.js', 'basecamp.js', 'stage42_zombie_base.js', 'stage39_survival.js', 'stage40_greenwater.js', 'stage42_progression.js', 'stage42_map.js', 'campaign.js', 'fx.js', 'hud.js', 'game.js',
   'inventory_ui.js', 'stage31_overhaul.js', 'stage32_menu.js'
 ];
 
@@ -184,7 +184,7 @@ vm.runInContext(`globalThis.__game = {
   lore, weather, injuries, society, vehicles, vehicleCraft, fx, terrain, lighting, hud,
   mouse, camera, hotbar, input, VEHICLE_MODULES, hordes, audio, places, objectives, events, worldState, baseCamp, campaign,
   STAGE31_EVENT_TYPES, STAGE31_SKILLS, useSkills, residentLife, livingWorld, Stage31UI, exportGameState,
-  GAME_MODES, SaveSlots, SaveGameSystem, creative, sustainable, greenwater, opening, OpeningSequence,
+  GAME_MODES, SaveSlots, SaveGameSystem, creative, sustainable, greenwater, stage42, journey42, S42_JOURNEY, S42_BLUEPRINTS, countyMapView, OBJECTIVE_DEFS, CRAFT_RECIPES_REF:CRAFT_RECIPES, opening, OpeningSequence,
   meleeAttack, fireWeapon, reloadWeapon, weaponProfile, magazines, primaryMouseAction, secondaryMouseAction, updateMouseTile, toggleMap, saveGameState, loadGameState,
   get selected() { return selected; }, set selected(v) { selected = v; },
   mineAtMouse, placeAtMouse, renderCrafting, renderBuildGrid, renderInventory, renderHotbar,
@@ -310,18 +310,21 @@ g.placeAtMouse(); frames(3);
   if (!fire.length) errors.push('quartel não possui container de loot firestation');
   if (!police.length) errors.push('delegacia não possui container de loot police');
 
-  // The progression ladder should react to actual discoveries/materials.
+  // Stage 42: the ladder follows what the survivor did, not what they saw.
   const stage21Weight = g.inventory.maxWeight;
   g.inventory.maxWeight = 9999;
-  g.inventory.add('scrap_metal', 1);
+  g.inventory.add('scrap_metal', 1); g.inventory.add('iron_ingot', 1); g.inventory.add('circuit_parts', 1);
   g.progression.observe();
-  if (g.progression.tier < 1) errors.push('progressão não liberou T1 ao encontrar sucata');
-  g.inventory.add('iron_ingot', 1);
+  if (g.progression.tier !== 0) errors.push('Stage 42: ver itens não pode subir o tier sozinho');
+  const px = Math.floor(g.player.x / g.CONFIG.TILE), py = Math.floor(g.player.y / g.CONFIG.TILE);
+  g.building.objects.push({ id: 9901, type: 'workbench', tileX: px, tileY: py, width: 2, height: 1, health: 140, maxHealth: 140 });
   g.progression.observe();
-  if (g.progression.tier < 2) errors.push('progressão não liberou T2 com metalurgia');
-  g.inventory.add('circuit_parts', 1);
-  g.progression.observe();
-  if (g.progression.tier < 3) errors.push('progressão não liberou T3 industrial');
+  if (g.progression.tier < 1) errors.push('progressão não liberou T1 com a bancada');
+  g.inventory.add('bp_metal_tools', 1); g.journey42.timer = 0; g.journey42.update(.5);
+  if (g.progression.tier < 2 || g.inventory.count('bp_metal_tools')) errors.push('progressão não liberou T2 com o manual de ferramentas');
+  g.inventory.add('bp_power', 1); g.journey42.timer = 0; g.journey42.update(.5);
+  if (g.progression.tier < 3) errors.push('progressão não liberou T3 com o projeto de energia');
+  g.building.objects = g.building.objects.filter(o => o.id !== 9901);
   g.inventory.maxWeight = stage21Weight;
 }
 
@@ -656,6 +659,8 @@ g.inventory.add('brick', 40); g.inventory.add('gravel', 40); g.inventory.add('co
 g.inventory.add('roof_shingle', 40); g.inventory.add('battery', 8); g.inventory.add('garage_parts', 12);
 // Stage 22+: provision every build ingredient so this sweep tests placement logic, not recipe progression.
 for (const def of Object.values(g.BUILD_DEFS)) for (const [id, qty] of Object.entries(def.cost || {})) g.inventory.add(id, Math.max(12, qty * 4));
+// Stage 42: the sweep tests placement, not progression — open every project
+g.journey42.grantAll();
 // each project is placed on the first clear, flat column found for it
 const buildResults = [];
 let cursor = Math.floor(g.player.x / g.CONFIG.TILE) + 8;
@@ -964,7 +969,7 @@ frames(40);
   g.building.objects.push(mill,node);g.power.update(1,{daylight:0,rainIntensity:1});
   if(g.power.report().production<2.3)errors.push('Stage 40 moinho não produz energia');
   const snapshot=g.exportGameState();
-  if(snapshot.version!==41||snapshot.world.width!==1900||!snapshot.greenwater)errors.push('Stage 41 payload de save incompleto');
+  if(snapshot.version!==42||snapshot.world.width!==1900||!snapshot.greenwater)errors.push('Stage 42 payload de save incompleto');
   const legacy40={...snapshot,version:40,containers:snapshot.containers.filter(c=>!c.stage41)};
   if(!g.loadGameState(legacy40,true))errors.push('Stage 41 recusou save v40');
   else {
@@ -985,6 +990,102 @@ frames(40);
   if(Math.max(...meadow)-Math.min(...meadow)>1)errors.push('Stage 40 planície de construção não ficou plana');
   const fx=1750,fy=20;g.world.set(fx,fy,g.TILE.WOOD);g.world.set(fx,fy-1,g.TILE.LEAF);g.world.cleanFloatingVegetation(1748,1752);
   if(g.world.get(fx,fy)!==g.TILE.AIR||g.world.get(fx,fy-1)!==g.TILE.AIR)errors.push('Stage 40 não removeu árvore flutuante');
+}
+
+// Stage 42 — progressão 2.0: jornada, projetos, restauração e mapa.
+{
+  const J=g.journey42,T=g.CONFIG.TILE,S=g.structures;
+  const keepObjects=g.building.objects;g.building.objects=[];
+  const keepEntries=g.inventory.entries.map(e=>({...e}));
+  const reset=()=>J.importState({version:1,known:[],done:[],flags:[],floor:0,reached:0});
+  reset();
+  if(g.progression.tier!==0)errors.push(`Stage 42 começou fora do T0 (${g.progression.tier})`);
+  // T0: axe and pickaxe by hand, no bench, no nails
+  g.inventory.entries=[];g.inventory.maxWeight=9999;
+  g.inventory.add('wood',6);g.inventory.add('stone',8);
+  const axe=g.crafting.craft('stone_axe',g.player),pick=g.crafting.craft('stone_pickaxe',g.player);
+  if(!axe.ok||!pick.ok)errors.push(`Stage 42 ferramentas de pedra exigem mais que madeira e pedra: ${axe.reason||''} ${pick.reason||''}`);
+  if(!g.building.canAfford('workbench')&&(g.BUILD_DEFS.workbench.cost.scrap_metal||0)>0)errors.push('Stage 42 bancada simples ainda exige sucata');
+  if(J.buildLock('campfire')||J.buildLock('workbench')||J.buildLock('crate'))errors.push('Stage 42 fogueira/bancada/baú bloqueados no início');
+  if(!J.buildLock('generator'))errors.push('Stage 42 gerador liberado sem o projeto de energia');
+  // journey: first objective, step order
+  g.objectives.update(1);
+  const first=g.objectives.active()[0];
+  if(!first||first.id!=='journey'||!/Sobrevivente/.test(first.title))errors.push('Stage 42 jornada não é o primeiro objetivo da HUD');
+  const px=Math.floor(g.player.x/T),py=Math.floor(g.player.y/T);
+  g.building.objects.push({id:9801,type:'campfire',tileX:px,tileY:py,width:1,height:1,health:50,maxHealth:50});
+  J.timer=0;J.update(.5);
+  if(J.current().index!==1)errors.push(`Stage 42 etapa 1 não concluiu com machado + fogueira (etapa ${J.current().index})`);
+  g.building.objects.push({id:9802,type:'workbench',tileX:px+2,tileY:py,width:2,height:1,health:140,maxHealth:140});
+  J.timer=0;J.update(.5);
+  if(g.progression.tier!==1)errors.push('Stage 42 bancada não liberou o T1');
+  if(g.crafting.isUnlocked(g.CRAFT_RECIPES_REF.find(r=>r.id==='hatchet'),g.player))errors.push('Stage 42 machadinha liberada sem manual');
+  // projects: every one is somewhere in the county, learning removes the copies
+  for(const bp of Object.keys(g.S42_BLUEPRINTS))if(!S.containers.some(c=>(c.loot||[]).some(r=>r.id===bp)))errors.push(`Stage 42 ${bp} não foi colocado em nenhum local`);
+  g.inventory.add('bp_metal_tools',1);J.timer=0;J.update(.5);
+  if(!J.knows('bp_metal_tools')||g.progression.tier<2)errors.push('Stage 42 manual não foi aprendido');
+  if(S.containers.some(c=>(c.loot||[]).some(r=>r.id==='bp_metal_tools')))errors.push('Stage 42 cópias do manual continuam no mundo depois de aprendido');
+  if(!g.crafting.isUnlocked(g.CRAFT_RECIPES_REF.find(r=>r.id==='hatchet'),g.player))errors.push('Stage 42 manual não liberou a machadinha');
+  // firearms: only restorations, only at a powered weapon bench
+  const gunRecipes=g.CRAFT_RECIPES_REF.filter(r=>g.ITEM_DEFS[r.output.id]?.gun);
+  if(gunRecipes.some(r=>!r.restore||!r.weaponBench||!r.cost.damaged_weapon_frame))errors.push('Stage 42 ainda existe arma de fogo fabricada do zero');
+  g.inventory.add('bp_power',1);g.inventory.add('bp_armory',1);J.timer=0;J.update(.5);
+  if(g.progression.tier!==4)errors.push(`Stage 42 manual do armeiro não levou ao T4 (T${g.progression.tier})`);
+  for(const [id,q] of Object.entries({damaged_weapon_frame:1,weapon_parts:2,maintenance_kit:1}))g.inventory.add(id,q);
+  const bench={id:9803,type:'weapon_bench',tileX:px,tileY:py,width:2,height:1,health:180,maxHealth:180,powered:false};
+  g.building.objects.push(bench);
+  if(g.crafting.craft('restore_pistol',g.player).ok)errors.push('Stage 42 restaurou arma sem energia na bancada');
+  bench.powered=true;
+  const restored=g.crafting.craft('restore_pistol',g.player);
+  if(!restored.ok||!J.flags.has('restored_gun'))errors.push(`Stage 42 bancada com energia não restaurou a pistola: ${restored.reason||''}`);
+  // common houses hand out worn tools
+  const worn=[],intact=[];
+  for(let i=0;i<120;i++){for(const r of S.loot('household',5000+i,4,{guaranteed:true})){const d=g.ITEM_DEFS[r.id];if(d?.maxDurability&&!d.stackable&&d.category==='tool')worn.push((r.durability??d.maxDurability)/d.maxDurability);}
+    for(const r of S.loot('police',7000+i,4,{guaranteed:true})){const d=g.ITEM_DEFS[r.id];if(d?.maxDurability&&!d.stackable)intact.push((r.durability??d.maxDurability)/d.maxDurability);}}
+  if(!worn.length||worn.some(f=>f>.8))errors.push('Stage 42 ferramentas de casas comuns não vêm gastas');
+  if(intact.some(f=>f<1))errors.push('Stage 42 equipamento de locais especiais veio gasto');
+  // save roundtrip and a pre-42 save keeps what it had reached
+  J.timer=0;J.update(.5);
+  const snap=g.exportGameState();
+  if(!snap.journey42||!snap.journey42.known.includes('bp_armory'))errors.push('Stage 42 estado ausente no save');
+  reset();
+  if(!g.loadGameState(snap,true)||!J.knows('bp_armory')||g.progression.tier<4)errors.push('Stage 42 save não restaurou projetos/tier');
+  g.building.objects=[{id:9804,type:'generator',tileX:px,tileY:py,width:2,height:1,health:160,maxHealth:160},{id:9805,type:'workbench',tileX:px+3,tileY:py,width:2,height:1,health:140,maxHealth:140}];
+  const legacy={...g.exportGameState(),journey42:undefined};
+  if(!g.loadGameState(legacy,true))errors.push('Stage 42 recusou save antigo');
+  else if(!J.knows('bp_power')||g.progression.tier<3||J.current().index<3)errors.push(`Stage 42 save antigo com gerador perdeu progresso (T${g.progression.tier}, etapa ${J.current().index})`);
+  // map: zoom keeps its centre, markers land where clicked
+  g.toggleMap(true);frames(1);
+  const V=g.countyMapView;V.setZoom(4);V.centerOn(600,90);V.clampCenter();
+  const rect=V.canvas.getBoundingClientRect(),hit=V.toTile(rect.left+rect.width/2,rect.top+rect.height/2);
+  if(Math.abs(hit.tx-600)>2||Math.abs(hit.ty-90)>2)errors.push(`Stage 42 mapa com zoom converte o clique errado (${hit.tx.toFixed(1)}, ${hit.ty.toFixed(1)})`);
+  V.setZoom(0);g.toggleMap(false);frames(1);
+  g.building.objects=keepObjects;g.inventory.entries=keepEntries;
+  J.grantAll();
+  frames(10);
+  console.log(`stage 42: ${g.S42_JOURNEY.length} etapas, ${Object.keys(g.S42_BLUEPRINTS).length} projetos, ${gunRecipes.length} restaurações, ${worn.length} ferramentas de loot comum`);
+}
+
+// Stage 42 — persistent regional pressure and useful base defense.
+{
+  const state=g.stage42.exportState();
+  if(state.version!==1||state.regions.length!==g.REGIONS.length)errors.push('Stage 42 população regional não foi criada');
+  const row=g.stage42.current(),before=row.attention;
+  g.stage42.onNoise(g.player.x,920,'teste');
+  if(row.attention<=before)errors.push('Stage 42 ruído não aumentou atenção regional');
+  const save=g.exportGameState();
+  if(save.version!==42||!save.stage42?.event)errors.push('Stage 42 payload persistente ausente');
+  if(!g.BUILD_DEFS.perimeter_sensor||!g.BUILD_DEFS.decoy_siren)errors.push('Stage 42 defesas novas ausentes');
+  const col=g.stage42.fairColumn(row,1);
+  if(col!=null){
+    const view=g.CONFIG.TILE*20;
+    if(Math.abs(col*g.CONFIG.TILE-g.player.x)<view)errors.push('Stage 42 escolheu spawn dentro da visão imediata');
+  }
+  const oldEvent={...g.stage42.event};
+  g.stage42.event.phase='warning';g.stage42.event.nextAt=g.worldMinutes;
+  g.stage42.updateEvent(.1);
+  if(g.stage42.event.phase!=='active')errors.push('Stage 42 Noite Vermelha não iniciou após aviso');
+  g.stage42.event=oldEvent;
 }
 
 console.log(`chunks built: ${g.terrain.built}, kills: ${g.danger.kills}, ` +

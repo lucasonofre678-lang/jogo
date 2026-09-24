@@ -1,0 +1,6 @@
+STAGE 40.1 — INSTALAÇÃO
+
+Extraia o ZIP e copie a pasta jogo-main por cima da pasta main que já possui o Stage 40.
+Confirme a substituição dos arquivos. Não apague os saves.
+
+Ao carregar, o jogo amplia o mundo e remove automaticamente árvores sem apoio.

@@ -1,0 +1,51 @@
+/* =========================================================================
+   LAST COUNTY — Stage 42 · jornada de progressão e mapa 2.0
+   Same field-manual plates as the rest of the interface.
+   ========================================================================= */
+
+.journey-strip {
+  display: grid;
+  gap: 5px;
+  padding: 9px 10px 10px;
+  background: rgba(10, 13, 14, .72);
+  border: 1px solid var(--edge);
+  border-left: 2px solid var(--amber);
+  font-family: var(--mono);
+}
+.journey-steps { display: flex; gap: 3px; flex-wrap: wrap; }
+.journey-steps i {
+  font-style: normal;
+  font-size: .5rem;
+  letter-spacing: .08em;
+  padding: 2px 5px;
+  color: var(--muted);
+  border: 1px solid rgba(226, 216, 186, .1);
+}
+.journey-steps i.done { color: #b9c89c; border-color: rgba(125, 144, 89, .45); background: rgba(125, 144, 89, .12); }
+.journey-steps i.now { color: #16130c; background: var(--amber-hot); border-color: var(--amber-hot); font-weight: 700; }
+.journey-strip strong { font-size: .7rem; letter-spacing: .12em; color: var(--bone); }
+.journey-strip p { margin: 0; font-family: var(--sans); font-size: .72rem; line-height: 1.35; color: #c9c1ab; }
+.journey-strip ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.journey-strip li { font-size: .64rem; color: #d7cfb7; }
+.journey-strip li.done { color: #8f9c7a; text-decoration: line-through; text-decoration-color: rgba(143, 156, 122, .5); }
+.journey-strip small { font-size: .54rem; letter-spacing: .05em; line-height: 1.4; color: #9aa39b; }
+
+.build-card.locked { opacity: .62; }
+.build-card.locked .cost { color: #d9a86a; }
+
+.map-zoom { position: absolute; right: 10px; top: 30px; display: grid; gap: 4px; z-index: 2; }
+.map-zoom button {
+  width: 26px; height: 26px; padding: 0;
+  font: 700 14px/1 var(--mono);
+  color: var(--bone);
+  background: rgba(8, 11, 12, .82);
+  border: 1px solid rgba(203, 190, 151, .28);
+  cursor: pointer;
+}
+.map-zoom button:hover { border-color: var(--amber-hot); color: var(--amber-hot); }
+#countyMap { cursor: grab; }
+#countyMap:active { cursor: grabbing; }
+.map-side .journey-where { color: #d8c08a; }
+.map-side .journey-next { color: #8d9a94; font-family: var(--mono); font-size: 10px; letter-spacing: .06em; }
+.map-legend .legend-journey { background: transparent; border: 1px dashed #e2bd6a; }
+.map-layout { align-items: start; }

@@ -1,0 +1,8 @@
+STAGE 40 — VALIDAÇÃO
+
+- Boot e sessão completa: tools/smoke.js
+- Migração simulada de save v39 para grid 1320×184
+- Geração e acessibilidade em 6 seeds: tools/validate_world.js 6
+- Assets e caminhos de imagem: tools/validate_assets.js
+- Conteúdo e integração estática: tools/validate_stage40.js
+- Teste final após extração do UPDATE ONLY sobre uma cópia limpa do Stage 39

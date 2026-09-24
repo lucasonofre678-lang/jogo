@@ -1,0 +1,7 @@
+LAST COUNTY — STAGE 40.2 GREENWATER VIVA
+
+1. Extraia este ZIP sobre a pasta que já contém jogo-main.
+2. Confirme a substituição dos arquivos.
+3. Não apague a pasta de saves.
+
+Este pacote é incremental e deve ser instalado depois da Stage 40.1.

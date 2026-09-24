@@ -154,7 +154,7 @@ class Inventory {
     return [...this.entries].sort((a, b) => {
       const da = this.def(a.id);
       const db = this.def(b.id);
-      const order = { currency: 0, firearm: 1, ammo: 2, tool: 3, light: 4, clothing: 5, medical: 6, food: 7, drink: 8, seed: 9, container: 10, component: 11, material: 12, key: 13 };
+      const order = { currency: 0, firearm: 1, ammo: 2, tool: 3, light: 4, clothing: 5, medical: 6, food: 7, drink: 8, seed: 9, container: 10, component: 11, material: 12, key: 13, blueprint: 14 };
       return (order[da.category] ?? 9) - (order[db.category] ?? 9) || da.name.localeCompare(db.name);
     });
   }

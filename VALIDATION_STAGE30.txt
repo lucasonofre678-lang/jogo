@@ -1,0 +1,14 @@
+STAGE 30 VALIDATION
+- 31 novos wearables
+- 55 peças vestíveis totais
+- 6 slots de equipamento
+- condição/reparo de roupas
+- capacidade dinâmica de mochilas
+- loot contextual por profissão/local
+- Stage 27 validator PASS
+- Stage 28 validator PASS
+- Stage 29 validator PASS
+- Stage 30 validator PASS
+- assets runtime PASS (817 paths)
+- validate_world PASS em 4 seeds
+- smoke test PASS 3x

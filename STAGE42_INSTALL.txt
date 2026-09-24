@@ -1,0 +1,8 @@
+LAST COUNTY — STAGE 42 (Progressão e Crafting 2.0 + População de zumbis e defesa da base)
+
+1. Feche o jogo e faça uma cópia da pasta atual.
+2. Extraia este ZIP no mesmo local onde já existe a pasta "jogo".
+3. Confirme a substituição dos arquivos.
+4. Abra jogo/index.html normalmente.
+
+Saves das versões 22, 23, 27, 28, 31, 32, 39, 40 e 41 continuam compatíveis e mantêm o progresso alcançado.

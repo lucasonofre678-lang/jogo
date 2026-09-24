@@ -1,0 +1,10 @@
+STAGE 39 — VALIDAÇÃO
+
+Comandos executados antes do empacotamento:
+
+- node tools/smoke.js
+- node tools/validate_assets.js
+- node tools/validate_world.js 6
+- node tools/validate_stage39.js
+
+Cobertura: boot completo, ordem dos scripts, gameplay simulado, construção, energia, baterias, prioridades, água, dashboard, save/load, modo criativo, assets e geração de seis mundos.

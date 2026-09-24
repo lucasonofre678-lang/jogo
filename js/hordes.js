@@ -75,7 +75,9 @@ class HordeSystem {
     const size = HORDE_SIZES[sizeKey] || HORDE_SIZES.small;
     const originX = opts.originX ?? this.offscreenColumn(opts.minTiles ?? 30, opts.maxTiles ?? 64, opts.side || 0);
     if (originX == null) return null;
-    if (this.aliveCount() > 190) return null;      // teto de entidades
+    // Stage 42: the 1900-tile county starts with more regional population than
+    // the old map. Keep a ceiling, but leave headroom for real migrations.
+    if (this.aliveCount() > 360) return null;
 
     const count = size.min + Math.floor(this.rand() * (size.max - size.min + 1));
     const region = this.world.region(originX);
@@ -199,7 +201,7 @@ class HordeSystem {
 
   // Um grupo atravessa a região do jogador sem mirar nele — pressão ambiente.
   migrate() {
-    if (this.aliveCount() > 160) return;
+    if (this.aliveCount() > 330) return;
     const playerTile = Math.floor(this.player.x / CONFIG.TILE);
     const danger = this.regionDanger(playerTile);
     const dayFactor = Math.min(2.2, 0.7 + this.day() * 0.12);

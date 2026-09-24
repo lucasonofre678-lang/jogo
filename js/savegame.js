@@ -7,7 +7,7 @@ class SaveGameSystem {
     try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch (_) { return null; }
   }
 
-  static SUPPORTED = [22, 23, 27, 28, 31, 32, 39, 40, 41];
+  static SUPPORTED = [22, 23, 27, 28, 31, 32, 39, 40, 41, 42];
 
   static isSupported(version) {
     return this.SUPPORTED.includes(version);

@@ -16,7 +16,7 @@ for(const id of ['carrot','pumpkin','cabbage','onion','strawberry'])if(!new RegE
 for(const id of ['sustainabilityButton','baseDaysText','sustainabilityModal','stage39Consumers','stage39Rooms'])if(!html.includes(`id="${id}"`))fail.push(`elemento de UI ausente: ${id}`);
 if(html.indexOf('js/stage39_content.js')>html.indexOf('js/assets.js'))fail.push('conteúdo carrega depois dos assets');
 if(html.indexOf('js/stage39_survival.js')>html.indexOf('js/game.js'))fail.push('sistema sustentável carrega depois do jogo');
-if(!/version:(39|40|41)/.test(game)||!/39/.test(save.match(/SUPPORTED\s*=\s*\[[^\]]+\]/)?.[0]||''))fail.push('save Stage 39 não está habilitado');
+if(!/version:(39|40|41|42)/.test(game)||!/39/.test(save.match(/SUPPORTED\s*=\s*\[[^\]]+\]/)?.[0]||''))fail.push('save Stage 39 não está habilitado');
 if(!game.includes('sustainable:sustainable.exportState()')||!game.includes('sustainable.importState(save.sustainable)'))fail.push('roundtrip sustentável ausente');
 if(!css.includes('.survival-dashboard')||!css.includes('@media'))fail.push('layout responsivo ausente');
 if(fail.length){console.error('STAGE39 FAILED');for(const x of fail)console.error('- '+x);process.exit(1);}

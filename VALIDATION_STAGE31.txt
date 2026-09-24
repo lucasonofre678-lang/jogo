@@ -1,0 +1,18 @@
+VALIDAÇÃO — STAGE 31
+
+APROVADO
+- node --check js/stage31_overhaul.js
+- node tools/smoke.js
+- Boot completo dos scripts na ordem do index.html
+- Simulação de movimento, combate, inventário, crafting, veículos, NPCs, base, campanha e save/load
+- Spawn validado dos 8 tipos de operação do Stage 31
+- 5 novos setores subterrâneos validados
+- 5 novos setores de Blackridge validados
+- Progressão por uso validada até nível 2
+- Dados de necessidade, rotina e memória validados nos 4 NPCs
+- Payload Stage 31 confirmado no export do save
+- Teste real no Chromium em 1440x900 sem erros de console ou página
+- Navegação validada nas 5 abas do painel LC
+
+RESULTADO
+Smoke test passed. Browser integration passed. ZIP pronto para sobrepor a pasta main.

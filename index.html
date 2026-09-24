@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="menu-creative.css">
   <link rel="stylesheet" href="stage39-survival.css">
   <link rel="stylesheet" href="stage41-1-polish.css">
+  <link rel="stylesheet" href="stage42-progression.css">
 </head>
 <body>
   <main class="shell">
@@ -234,6 +235,7 @@
                 <label class="craft-search"><span>BUSCAR</span><input id="craftSearch" type="search" placeholder="Receita ou material..." autocomplete="off"></label>
                 <button id="craftFavoritesButton" type="button" title="Mostrar apenas favoritas">★ FAVORITAS</button>
               </div>
+              <div id="journeyStrip" class="journey-strip"></div>
               <div id="pinnedRecipe" class="pinned-recipe hidden"></div>
               <div id="craftFilters" class="craft-filters"></div>
               <div id="craftList" class="craft-list"></div>
@@ -556,17 +558,20 @@
           </div>
           <div class="map-layout">
             <div class="county-map-wrap">
-              <canvas id="countyMap" width="1080" height="420" aria-label="Mapa de Last County"></canvas>
-              <div class="map-hint">CLIQUE NO MAPA PARA CRIAR/REMOVER UM MARCADOR · M PARA FECHAR</div>
+              <canvas id="countyMap" width="1080" height="560" aria-label="Mapa de Last County"></canvas>
+              <div class="map-zoom"><button id="mapZoomIn" type="button" title="Aproximar">+</button><button id="mapZoomOut" type="button" title="Afastar">−</button><button id="mapCenter" type="button" title="Centralizar em você">⌖</button></div>
+              <div class="map-hint">CLIQUE: MARCADOR · RODA: ZOOM · ARRASTE: MOVER · M: FECHAR</div>
             </div>
             <aside class="map-side">
               <span class="eyebrow">POSIÇÃO</span>
               <strong id="mapPositionText">—</strong>
               <small id="mapRegionText">—</small>
               <div class="map-divider"></div>
-              <span class="eyebrow">PROGRESSÃO</span>
-              <strong id="progressionTierText">T0 · IMPROVISO</strong>
+              <span class="eyebrow">JORNADA</span>
+              <strong id="progressionTierText">ETAPA 1/7</strong>
               <small id="progressionHintText">Explore para encontrar materiais melhores.</small>
+              <small id="journeyWhereText" class="journey-where"></small>
+              <small id="journeyNextText" class="journey-next"></small>
               <div class="map-divider"></div>
               <span class="eyebrow">DESCOBERTAS</span>
               <strong id="mapDiscoveryText">0 locais</strong>
@@ -578,6 +583,7 @@
                 <span><i class="legend-underground"></i> SUBSOLO</span>
                 <span><i class="legend-marker"></i> MARCADOR</span>
                 <span><i class="legend-signal"></i> SINAL DE RÁDIO</span>
+                <span><i class="legend-journey"></i> PRÓXIMA ETAPA</span>
               </div>
             </aside>
           </div>
@@ -735,6 +741,7 @@
   <script src="js/building.js"></script>
   <script src="js/stage39_content.js"></script>
   <script src="js/stage40_content.js"></script>
+  <script src="js/stage42_content.js"></script>
   <script src="js/decor_data.js"></script>
   <script src="js/animation.js"></script>
   <script src="js/wildlife.js"></script>
@@ -770,8 +777,11 @@
   <script src="js/gamemode.js"></script>
   <script src="js/creative.js"></script>
   <script src="js/basecamp.js"></script>
+  <script src="js/stage42_zombie_base.js"></script>
   <script src="js/stage39_survival.js"></script>
   <script src="js/stage40_greenwater.js"></script>
+  <script src="js/stage42_progression.js"></script>
+  <script src="js/stage42_map.js"></script>
   <script src="js/campaign.js"></script>
   <script src="js/fx.js"></script>
   <script src="js/hud.js"></script>

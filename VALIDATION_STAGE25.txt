@@ -1,0 +1,79 @@
+LAST COUNTY — Stage 25 validation
+
+JS syntax: OK (all js/*.js and tools/*.js via node --check)
+
+Sprite generation: node tools/gen_sprites.js
+- 93 sheets (player + 25 clothing overlays + 63 infected + 4 NPCs), 1.23 MB total
+- frame bounds: OK  (no frame draws past its cell into the neighbouring frame)
+
+Runtime asset validation: OK
+- tiles: 82 x3
+- items: 105
+- builds: 50
+- decor: 196
+- runtime image paths checked: 713
+- sprite frame ranges: player needs 65 frames, infected 33 — every sheet has them
+- negative control: forcing playerNeed = 200 correctly reports all 26 player
+  sheets plus PLAYER_HAND_FRAMES as out of range
+
+Smoke tests: PASS
+- world 960x168, 35 structures, 145 containers, 1245 props, 155 infected
+- world state: 78/103 events fired (16 types), 210 lights, 128 emitters
+- builds placed: 38/50, chunks built: 1832, kills: 2, objects: 43
+
+World validation: 4/4 seeds PASS
+seed 1000: 35 structures, 1197 props, 144 containers, 210 lights, 129 emitters, 2 secrets
+seed 8919: 35 structures, 1242 props, 146 containers, 208 lights, 116 emitters, 3 secrets
+seed 16838: 35 structures, 1212 props, 146 containers, 204 lights, 114 emitters, 2 secrets
+seed 24757: 35 structures, 1222 props, 144 containers, 202 lights, 137 emitters, 2 secrets
+
+Rendered scenes reviewed (headless canvas, tools/render.js + scenario harness):
+- starting area, idle and walk
+- city street with 5+ infected of different contexts on screen
+- melee: light active and heavy active against a wanderer and a runner
+- ranged: rifle aim tracking the cursor, and reload
+- mining swing
+- crouch (sprite ~36px against the 34px crouch box)
+- infected crowd: all 8 forms side by side
+- clothing loadouts over the new body: firefighter, police, Blackridge, miner,
+  paramedic — each reads as a different profession at a glance
+- clothing registration checked frame by frame across idle / walk / run /
+  crouch / crouch-walk / light attack / heavy attack / aim / mine / hurt
+- left- and right-facing sprites: backpack, weapon hand and shading all mirror
+  correctly
+
+Stage 25 targeted checks:
+- IK-solved poses: every grounded frame has both soles on the ground line
+- scaled infected (heavy / contained / armored / runner) still stand on the
+  ground line, because the draw anchors off cx/ground instead of a fixed offset
+- crouch uses dedicated frames instead of vertically squashing the standing art
+- held weapon anchored from PLAYER_HAND_FRAMES, read out of the same solver
+  that drew the art
+- all 8 infected forms have distinct silhouettes
+- infected keep their area context (hospital, police, fire, mine, metro,
+  industrial, Blackridge) as art, not as new AI
+- no gore, no supernatural powers
+- Stage 24 gameplay preserved by smoke test (movement, combat, buffer, AI,
+  progression, inventory, crafting, vehicles, map, base, save/load, events)
+
+Follow-up fix — character trembling / legs not animating:
+- root cause: moveY() probed the ground with floor((y + h - 1) / T), the body's
+  last occupied row, so after a landing snap the feet sat exactly on the tile
+  boundary and the floor row was never tested again. onGround flickered at
+  30 Hz on flat ground.
+- stepped probe BEFORE the fix, 40 frames standing on flat ground:
+    fall, land, fall, land, ... forever
+    animator.time pinned at 0.016, frame never left 30/32, squash re-fired to
+    0.24 every other frame, landTimer pinned at 0.28 — state never reached walk
+- stepped probe AFTER the fix, same 40 frames:
+    idle throughout, onGround 1 every frame, squash 0, animTime advancing
+- walking probe: walk frames 4 -> 5 -> 6 -> 7 -> 8 -> 9 advancing correctly
+- jump probe: idle -> jump (frame of take-off, vy -12.08) -> fall -> land
+  (5 frames) -> idle, with squash firing exactly once
+- walk-to-sprint probe: walk:10 -> run:12 with the stride phase carried over
+  (animator.time 0.44 -> 0.32 remapped, not reset to 0)
+- infected carry the same off-by-one in enemies.js but their animation state
+  does not read onGround, so there is no visual symptom; left untouched because
+  that line feeds infected climbing behaviour (AI, not art)
+- full suite re-run after the fix: node --check OK, validate_assets OK,
+  smoke test passed, validate_world OK

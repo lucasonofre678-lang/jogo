@@ -1,0 +1,31 @@
+LAST COUNTY — Stage 24 validation
+
+JS syntax: OK (all js/*.js)
+Runtime asset validation: OK
+- tiles: 82 x3
+- items: 105
+- builds: 50
+- decor: 196
+- runtime image paths checked: 657
+
+Smoke tests: 5/5 PASS
+Observed generated sessions:
+- structures: 35
+- containers: 145–148
+- props: 1189–1246
+- infected: 138–163
+
+World validation: 4/4 seeds PASS
+seed 1000: 35 structures, 1197 props, 144 containers, 210 lights, 129 emitters, 2 secrets
+seed 8919: 35 structures, 1242 props, 146 containers, 208 lights, 116 emitters, 3 secrets
+seed 16838: 35 structures, 1212 props, 146 containers, 204 lights, 114 emitters, 2 secrets
+seed 24757: 35 structures, 1222 props, 144 containers, 202 lights, 137 emitters, 2 secrets
+
+Stage 24 targeted checks:
+- slower movement/pacing configuration
+- animation controller/state machine present
+- melee input buffer / light chain
+- solid walls block melee
+- armored infected profile
+- lurcher infected profile
+- existing Stage 23 systems preserved by smoke test

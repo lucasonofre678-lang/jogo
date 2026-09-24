@@ -1,0 +1,16 @@
+Stage 27 validation
+
+- todos os JS: node --check OK
+- validate_assets.js: OK
+- 82 tiles x3
+- 123 itens
+- 50 construções
+- 196 tipos de decor
+- 762 caminhos de imagens runtime verificados
+- 31 held weapon sprites verificados
+- validate_stage27.js: OK
+- 9 novas armas
+- 9 novos itens/componentes de arsenal
+- 11 receitas da categoria ARMAS
+- smoke.js: PASS
+- validate_world.js: PASS em seeds 101, 202, 303 e 404

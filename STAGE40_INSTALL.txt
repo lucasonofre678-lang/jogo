@@ -1,0 +1,8 @@
+STAGE 40 — INSTALAÇÃO
+
+1. Extraia o ZIP.
+2. Copie o conteúdo da pasta jogo-main por cima da sua pasta main.
+3. Confirme a substituição dos arquivos.
+4. Abra index.html normalmente.
+
+Não apague os saves. A atualização migra automaticamente o mapa antigo para o mundo ampliado.

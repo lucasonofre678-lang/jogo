@@ -1,0 +1,8 @@
+LAST COUNTY — STAGE 41
+
+1. Feche o jogo.
+2. Extraia este ZIP no mesmo local onde já existe a pasta "jogo".
+3. Confirme a substituição dos arquivos.
+4. Abra jogo/index.html normalmente.
+
+Não apague os dados do navegador. Seus saves antigos são compatíveis.

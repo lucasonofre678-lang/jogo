@@ -1,0 +1,11 @@
+LAST COUNTY — STAGE 27 UPDATE ONLY
+
+1. Abra a pasta PRINCIPAL do jogo, aquela onde ficam index.html, js/ e assets/.
+2. Extraia o conteúdo deste ZIP diretamente nessa pasta.
+3. Quando o Windows perguntar, escolha substituir/mesclar os arquivos.
+
+IMPORTANTE:
+O ZIP não possui uma pasta "jogo" na raiz. Ele já começa em js/, assets/, tools/ etc.
+Então NÃO cria jogo/jogo/.
+
+Faça uma cópia da pasta atual antes de substituir, por segurança.
